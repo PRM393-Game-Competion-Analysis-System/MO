@@ -1,29 +1,9 @@
 import 'package:flutter/material.dart';
 
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Analyze Game AI',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1129A4)),
-        useMaterial3: true,
-      ),
-      home: const GameAnalyzeWelcomeScreen(),
-    );
-  }
-}
-
 class GameAnalyzeWelcomeScreen extends StatelessWidget {
-  const GameAnalyzeWelcomeScreen({super.key});
+  const GameAnalyzeWelcomeScreen({Key? key}) : super(key: key);
 
+  // Định nghĩa các mã màu chính xác từ thiết kế
   static const Color bgColor = Color(0xFFF8F9FA);
   static const Color cardColor = Colors.white;
   static const Color darkText = Color(0xFF1A1D20);
@@ -39,6 +19,7 @@ class GameAnalyzeWelcomeScreen extends StatelessWidget {
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
             child: Container(
+              // Giới hạn chiều rộng tối đa giống như giao diện web/bản thiết kế
               constraints: const BoxConstraints(maxWidth: 420),
               padding: const EdgeInsets.symmetric(vertical: 32.0, horizontal: 24.0),
               decoration: BoxDecoration(
@@ -47,7 +28,7 @@ class GameAnalyzeWelcomeScreen extends StatelessWidget {
                 border: Border.all(color: Colors.grey.shade100),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04), // Fixed deprecation
+                    color: Colors.black.withOpacity(0.04),
                     blurRadius: 30,
                     offset: const Offset(0, 8),
                   ),
@@ -56,7 +37,7 @@ class GameAnalyzeWelcomeScreen extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Logo Icon
+                  // --- Logo Icon ---
                   Container(
                     width: 56,
                     height: 56,
@@ -68,7 +49,7 @@ class GameAnalyzeWelcomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
 
-                  // Header Title
+                  // --- Tiêu đề (Sử dụng RichText để đổi màu chữ) ---
                   RichText(
                     textAlign: TextAlign.center,
                     text: const TextSpan(
@@ -77,6 +58,7 @@ class GameAnalyzeWelcomeScreen extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                         color: darkText,
                         height: 1.2,
+                        fontFamily: 'sans-serif', // Thay bằng font hệ thống của bạn nếu cần
                       ),
                       children: [
                         TextSpan(text: "Analyze Game\n"),
@@ -90,7 +72,7 @@ class GameAnalyzeWelcomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
 
-                  // Description
+                  // --- Đoạn mô tả ---
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8.0),
                     child: Text(
@@ -105,7 +87,7 @@ class GameAnalyzeWelcomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 32),
 
-                  // Section Divider
+                  // --- Thanh phân tách CORE CAPABILITIES ---
                   Row(
                     children: [
                       Text(
@@ -128,14 +110,14 @@ class GameAnalyzeWelcomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // Capabilities Grid
+                  // --- Lưới 4 Thẻ Tính năng (Grid) ---
                   GridView.count(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     crossAxisCount: 2,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
-                    childAspectRatio: 1.35,
+                    childAspectRatio: 1.35, // Tỉ lệ khung hình để nội dung vừa vặn
                     children: [
                       _buildCapabilityCard(
                         icon: Icons.auto_awesome,
@@ -162,7 +144,7 @@ class GameAnalyzeWelcomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 32),
 
-                  // Primary Button (Upload Screenshot)
+                  // --- Nút Upload Screenshot (Primary) ---
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -190,7 +172,7 @@ class GameAnalyzeWelcomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
 
-                  // Secondary Button (Watch Demo)
+                  // --- Nút Watch Demo (Secondary) ---
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -215,7 +197,7 @@ class GameAnalyzeWelcomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
 
-                  // Login Link
+                  // --- Footer Đăng nhập ---
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -236,24 +218,19 @@ class GameAnalyzeWelcomeScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
 
-                  // Social Media Logins (List literal isn't const to allow dynamic method calls)
+                  // --- Các nút Mạng xã hội ---
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _buildSocialIconFromNetwork(
-                        'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
-                        size: 22,
-                        isColor: true,
-                      ),
-                      const SizedBox(width: 28),
-                      _buildSocialIconFromNetwork(
-                        'https://cdn-icons-png.flaticon.com/512/25/25231.png',
-                        size: 24,
-                      ),
-                      const SizedBox(width: 28),
-                      _buildSocialIconFromIcon(Icons.apple, size: 26),
+                      // Bạn có thể cài gói font_awesome_flutter để lấy icon chuẩn của Google/Github.
+                      // Ở đây mình dùng tạm icon mặc định của Flutter làm placeholder.
+                      _buildSocialIcon(Icons.g_mobiledata, size: 32),
+                      const SizedBox(width: 24),
+                      _buildSocialIcon(Icons.code),
+                      const SizedBox(width: 24),
+                      _buildSocialIcon(Icons.apple),
                     ],
                   ),
                 ],
@@ -265,6 +242,7 @@ class GameAnalyzeWelcomeScreen extends StatelessWidget {
     );
   }
 
+  // Hàm tạo Widget Thẻ Tính năng (Card)
   Widget _buildCapabilityCard({
     required IconData icon,
     required String title,
@@ -294,7 +272,7 @@ class GameAnalyzeWelcomeScreen extends StatelessWidget {
               ),
             ),
           Column(
-            crossAxisAlignment: CrossAxisAlignment.start, // Fixed typo syntax here
+            crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Icon(icon, color: primaryBlue, size: 22),
@@ -329,22 +307,8 @@ class GameAnalyzeWelcomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSocialIconFromNetwork(String url, {double size = 24, bool isColor = false}) {
-    return IconButton(
-      onPressed: () {},
-      icon: Image.network(
-        url,
-        width: size,
-        height: size,
-        color: isColor ? null : darkText,
-        errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, size: 20),
-      ),
-      constraints: const BoxConstraints(),
-      padding: EdgeInsets.zero,
-    );
-  }
-
-  Widget _buildSocialIconFromIcon(IconData icon, {double size = 24}) {
+  // Widget nút mạng xã hội
+  Widget _buildSocialIcon(IconData icon, {double size = 24}) {
     return IconButton(
       onPressed: () {},
       icon: Icon(icon, color: darkText, size: size),
