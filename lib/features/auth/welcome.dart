@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mo/features/auth/login.dart';
 
 class GameAnalyzeWelcomeScreen extends StatelessWidget {
   const GameAnalyzeWelcomeScreen({Key? key}) : super(key: key);
@@ -28,7 +29,7 @@ class GameAnalyzeWelcomeScreen extends StatelessWidget {
                 border: Border.all(color: Colors.grey.shade100),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: Colors.black.withValues(alpha: 0.04),
                     blurRadius: 30,
                     offset: const Offset(0, 8),
                   ),
@@ -206,7 +207,12 @@ class GameAnalyzeWelcomeScreen extends StatelessWidget {
                         style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
                       ),
                       GestureDetector(
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const LoginScreen()),
+                          );
+                        },
                         child: const Text(
                           "Sign In",
                           style: TextStyle(
