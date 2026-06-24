@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mo/features/auth/register.dart';
+import 'package:mo/features/mock_data/login-mock-data.dart';
+import 'package:mo/features/game_management/game_selection_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,6 +18,19 @@ class _LoginScreenState extends State<LoginScreen> {
   static const Color darkText = Color(0xFF1A1D20);
   static const Color primaryBlue = Color(0xFF1129A4);
   static const Color secondaryText = Color(0xFF6C757D);
+
+  // Helper method to handle navigation and pass Mock Data
+  void _navigateToGameSelection() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => GameSelectionScreen(
+          user: LoginMockData.mockUser,
+          games: LoginMockData.mockGames,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 children: [
                   const SizedBox(height: 20),
-                  // Logo
+                  // App Logo
                   Container(
                     width: 56,
                     height: 56,
@@ -184,11 +199,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           ],
                         ),
                         const SizedBox(height: 24),
+                        // Primary Sign In Button
                         SizedBox(
                           width: double.infinity,
                           height: 52,
                           child: ElevatedButton(
-                            onPressed: () {},
+                            onPressed: _navigateToGameSelection,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: primaryBlue,
                               foregroundColor: Colors.white,
@@ -212,7 +228,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 32),
 
-                  // Divider
+                  // OAuth Divider
                   Row(
                     children: [
                       const Expanded(child: Divider()),
@@ -233,22 +249,22 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Social Login Buttons
+                  // Social Media Authentication Buttons
                   _buildSocialButton(
                     label: "Continue with Google",
                     iconPath: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
-                    onPressed: () {},
+                    onPressed: _navigateToGameSelection,
                     isColor: true,
                   ),
                   const SizedBox(height: 12),
                   _buildSocialButton(
                     label: "Continue with GitHub",
                     iconPath: 'https://cdn-icons-png.flaticon.com/512/25/25231.png',
-                    onPressed: () {},
+                    onPressed: _navigateToGameSelection,
                   ),
                   const SizedBox(height: 24),
 
-                  // Footer
+                  // Footer Navigation Links
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [

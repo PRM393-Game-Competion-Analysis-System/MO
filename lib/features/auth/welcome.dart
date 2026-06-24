@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mo/features/auth/login.dart';
 
 class GameAnalyzeWelcomeScreen extends StatelessWidget {
-  const GameAnalyzeWelcomeScreen({Key? key}) : super(key: key);
+  const GameAnalyzeWelcomeScreen({super.key}); // Tối ưu constructor chuẩn Flutter mới
 
   // Định nghĩa các mã màu chính xác từ thiết kế
   static const Color bgColor = Color(0xFFF8F9FA);
@@ -59,7 +59,7 @@ class GameAnalyzeWelcomeScreen extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                         color: darkText,
                         height: 1.2,
-                        fontFamily: 'sans-serif', // Thay bằng font hệ thống của bạn nếu cần
+                        fontFamily: 'sans-serif',
                       ),
                       children: [
                         TextSpan(text: "Analyze Game\n"),
@@ -118,7 +118,7 @@ class GameAnalyzeWelcomeScreen extends StatelessWidget {
                     crossAxisCount: 2,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
-                    childAspectRatio: 1.35, // Tỉ lệ khung hình để nội dung vừa vặn
+                    childAspectRatio: 1.35,
                     children: [
                       _buildCapabilityCard(
                         icon: Icons.auto_awesome,
@@ -224,19 +224,24 @@ class GameAnalyzeWelcomeScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
 
-                  // --- Các nút Mạng xã hội ---
+                  // --- Đã cập nhật các nút Mạng xã hội chuẩn thiết kế ở đây 👇 ---
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Bạn có thể cài gói font_awesome_flutter để lấy icon chuẩn của Google/Github.
-                      // Ở đây mình dùng tạm icon mặc định của Flutter làm placeholder.
-                      _buildSocialIcon(Icons.g_mobiledata, size: 32),
-                      const SizedBox(width: 24),
-                      _buildSocialIcon(Icons.code),
-                      const SizedBox(width: 24),
-                      _buildSocialIcon(Icons.apple),
+                      _buildSocialIconFromNetwork(
+                        'https://cdn-icons-png.flaticon.com/512/2991/2991148.png', // Google Logo màu gốc
+                        size: 22,
+                        isColor: true,
+                      ),
+                      const SizedBox(width: 28),
+                      _buildSocialIconFromNetwork(
+                        'https://cdn-icons-png.flaticon.com/512/25/25231.png', // GitHub Logo chuẩn tối màu
+                        size: 24,
+                      ),
+                      const SizedBox(width: 28),
+                      _buildSocialIconFromIcon(Icons.apple, size: 26), // Apple Logo hệ thống
                     ],
                   ),
                 ],
@@ -313,8 +318,24 @@ class GameAnalyzeWelcomeScreen extends StatelessWidget {
     );
   }
 
-  // Widget nút mạng xã hội
-  Widget _buildSocialIcon(IconData icon, {double size = 24}) {
+  // Widget hiển thị logo từ internet (Google, GitHub)
+  Widget _buildSocialIconFromNetwork(String url, {double size = 24, bool isColor = false}) {
+    return IconButton(
+      onPressed: () {},
+      icon: Image.network(
+        url,
+        width: size,
+        height: size,
+        color: isColor ? null : darkText, // Tự động đổi màu logo GitHub sang màu tối giống thiết kế
+        errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, size: 20),
+      ),
+      constraints: const BoxConstraints(),
+      padding: EdgeInsets.zero,
+    );
+  }
+
+  // Widget hiển thị logo hệ thống (Apple)
+  Widget _buildSocialIconFromIcon(IconData icon, {double size = 24}) {
     return IconButton(
       onPressed: () {},
       icon: Icon(icon, color: darkText, size: size),
