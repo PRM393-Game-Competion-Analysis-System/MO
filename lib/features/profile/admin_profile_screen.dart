@@ -1,8 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:mo/widgets/custom_bottom_nav_bar.dart';
-import 'package:mo/features/history/history_screen.dart';
-import 'package:mo/features/cloud_sync/cloud_sync_screen.dart';
-import 'package:mo/features/player_lookup/player_lookup_screen.dart';
 import 'package:mo/features/profile/my_profile_screen.dart';
 import 'package:mo/features/profile/activity_center_screen.dart';
 
@@ -207,20 +203,7 @@ class AdminProfileScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: CustomBottomNavBar(
-        currentIndex: 4, // Profile index
-        onTap: (index) {
-          if (index == 0) {
-            Navigator.pop(context);
-          } else if (index == 1) {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HistoryScreen()));
-          } else if (index == 2) {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const CloudSyncScreen()));
-          } else if (index == 3) {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const PlayerLookupScreen()));
-          }
-        },
-      ),
+      // REMOVED: bottomNavigationBar property is now handled globally by MainLayout shell!
     );
   }
 

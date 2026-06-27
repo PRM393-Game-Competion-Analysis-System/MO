@@ -1,8 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:mo/widgets/custom_bottom_nav_bar.dart';
-import 'package:mo/features/history/history_screen.dart';
-import 'package:mo/features/cloud_sync/cloud_sync_screen.dart';
-import 'package:mo/features/player_lookup/player_lookup_screen.dart';
 
 class MyProfileScreen extends StatelessWidget {
   const MyProfileScreen({super.key});
@@ -47,7 +43,7 @@ class MyProfileScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                // AppBar items
+                // AppBar items with back action
                 Positioned(
                   top: 50,
                   left: 20,
@@ -56,7 +52,7 @@ class MyProfileScreen extends StatelessWidget {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () => Navigator.pop(context), // Safely returns to legacy ProfileScreen shell
                       ),
                       const Expanded(
                         child: Text(
@@ -69,7 +65,7 @@ class MyProfileScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Avatar
+                // Avatar Picture
                 Positioned(
                   bottom: -60,
                   child: Stack(
@@ -127,7 +123,7 @@ class MyProfileScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // Form
+            // Information Form
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Container(
@@ -180,7 +176,7 @@ class MyProfileScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // Save Button
+            // Save Changes Button
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: SizedBox(
@@ -199,24 +195,11 @@ class MyProfileScreen extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 100),
+            const SizedBox(height: 32), // Clean padding for bottom scroll view
           ],
         ),
       ),
-      bottomNavigationBar: CustomBottomNavBar(
-        currentIndex: 4, // Profile index
-        onTap: (index) {
-          if (index == 0) {
-            Navigator.pop(context);
-          } else if (index == 1) {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HistoryScreen()));
-          } else if (index == 2) {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const CloudSyncScreen()));
-          } else if (index == 3) {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const PlayerLookupScreen()));
-          }
-        },
-      ),
+      // REMOVED: bottomNavigationBar property is removed so it functions perfectly as a dynamic stacked sub-page!
     );
   }
 

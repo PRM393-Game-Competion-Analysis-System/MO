@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:mo/widgets/custom_bottom_nav_bar.dart';
 
 class ActivityCenterScreen extends StatelessWidget {
   const ActivityCenterScreen({super.key});
@@ -36,6 +35,7 @@ class ActivityCenterScreen extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 24.0),
         child: Column(
           children: [
+            const SizedBox(height: 10),
             // Live Data Badge
             Align(
               alignment: Alignment.topRight,
@@ -182,15 +182,9 @@ class ActivityCenterScreen extends StatelessWidget {
               title: "Activity Heatmap",
               subtitle: "Visualize regional traffic patterns.",
             ),
-            const SizedBox(height: 100),
+            const SizedBox(height: 40),
           ],
         ),
-      ),
-      bottomNavigationBar: CustomBottomNavBar(
-        currentIndex: 4, // Profile tab
-        onTap: (index) {
-          if (index != 4) Navigator.pop(context);
-        },
       ),
     );
   }
@@ -210,6 +204,7 @@ class ActivityCenterScreen extends StatelessWidget {
         ],
       ),
       child: Column(
+        // ĐÃ SỬA CÚ PHÁP CHUẨN TẠI ĐÂY 👇
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -267,8 +262,8 @@ class ActivityCenterScreen extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF0F2F5),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF0F2F5),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: primaryBlue, size: 22),

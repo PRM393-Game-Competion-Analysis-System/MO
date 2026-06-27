@@ -1,14 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:mo/features/mock_data/login-mock-data.dart';
-import 'package:mo/widgets/custom_bottom_nav_bar.dart';
 import 'package:mo/features/cloud_sync/cloud_sync_screen.dart';
-import 'package:mo/features/history/history_screen.dart';
-import 'package:mo/features/player_lookup/player_lookup_screen.dart';
-import 'package:mo/features/profile/profile_screen.dart';
-import 'package:mo/features/profile/admin_profile_screen.dart';
 
 class GameSelectionScreen extends StatelessWidget {
-  // Required data parameters passed from LoginScreen
+  // Required data parameters passed from LoginScreen via MainLayout
   final UserModel user;
   final List<GameModel> games;
 
@@ -91,7 +86,7 @@ class GameSelectionScreen extends StatelessWidget {
               ],
             ),
 
-            // Floating Refresh Button aligned right above bottom navigation
+            // Floating Refresh Button aligned right above global bottom navigation
             Positioned(
               right: 20,
               bottom: kBottomNavigationBarHeight + 20,
@@ -105,36 +100,7 @@ class GameSelectionScreen extends StatelessWidget {
           ],
         ),
       ),
-      // 5. Calling the reusable navigation bar component
-      bottomNavigationBar: CustomBottomNavBar(
-        currentIndex: 0, // Highlight the Home tab
-        onTap: (index) {
-          if (index == 1) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const HistoryScreen()),
-            );
-          } else if (index == 2) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const CloudSyncScreen()),
-            );
-          } else if (index == 3) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const PlayerLookupScreen()),
-            );
-          } else if (index == 4) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => user.isAdmin ? const AdminProfileScreen() : const ProfileScreen(),
-              ),
-            );
-          }
-          debugPrint("Selected navigation index: $index");
-        },
-      ),
+      // REMOVED: bottomNavigationBar property is now completely handled by MainLayout globally!
     );
   }
 
@@ -299,14 +265,13 @@ class GameSelectionScreen extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-                // SỬA: Dùng Image.network tải ảnh động, nếu lỗi sẽ tự lấy banner.png làm dự phòng 👇
                 child: Image.network(
                   game.imageUrl,
                   height: 180,
                   width: double.infinity,
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) => Image.asset(
-                    'assets/images/banner.png', // Ảnh local dự phòng khi link die
+                    'assets/images/banner.png',
                     height: 180,
                     width: double.infinity,
                     fit: BoxFit.cover,
