@@ -3,6 +3,7 @@ import 'package:mo/features/mock_data/login-mock-data.dart';
 import 'package:mo/widgets/custom_bottom_nav_bar.dart';
 import 'package:mo/features/cloud_sync/cloud_sync_screen.dart';
 import 'package:mo/features/history/history_screen.dart';
+import 'package:mo/features/player_lookup/player_lookup_screen.dart';
 
 class GameSelectionScreen extends StatelessWidget {
   // Required data parameters passed from LoginScreen
@@ -115,6 +116,11 @@ class GameSelectionScreen extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const CloudSyncScreen()),
+            );
+          } else if (index == 3) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const PlayerLookupScreen()),
             );
           }
           debugPrint("Selected navigation index: $index");
