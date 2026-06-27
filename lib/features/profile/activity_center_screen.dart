@@ -1,4 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:mo/features/activity_center/user_management_screen.dart';
+import 'package:mo/features/activity_center/game_management_screen.dart';
+// LINKED IMPORTS: Đã liên kết chính xác 3 file tính năng quản trị mới tạo 👇
+import 'package:mo/features/activity_center/analysis_history_screen.dart';
+import 'package:mo/features/activity_center/activity_trends_screen.dart';
+import 'package:mo/features/activity_center/activity_heatmap_screen.dart';
 
 class ActivityCenterScreen extends StatelessWidget {
   const ActivityCenterScreen({super.key});
@@ -32,10 +38,9 @@ class ActivityCenterScreen extends StatelessWidget {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10.0),
         child: Column(
           children: [
-            const SizedBox(height: 10),
             // Live Data Badge
             Align(
               alignment: Alignment.topRight,
@@ -158,29 +163,62 @@ class ActivityCenterScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // Management Cards
+            // MANAGEMENT CARDS SECTION
             _buildManagementCard(
               icon: Icons.person_outline,
               title: "User Management",
               subtitle: "Review accounts, roles, and permissions.",
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const UserManagementScreen()),
+              ),
             ),
             const SizedBox(height: 12),
+
+            _buildManagementCard(
+              icon: Icons.sports_esports_outlined,
+              title: "Game Management",
+              subtitle: "Configure active titles, regions, and OCR rules.",
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const GameManagementScreen()),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // FIXED: Đã đấu nối trực tiếp đến AnalysisHistoryScreen xịn 🎯
             _buildManagementCard(
               icon: Icons.history,
               title: "Analysis History",
               subtitle: "Audit all processed screenshots.",
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AnalysisHistoryScreen()),
+              ),
             ),
             const SizedBox(height: 12),
+
+            // FIXED: Đã đấu nối trực tiếp đến ActivityTrendsScreen xịn 🎯
             _buildManagementCard(
               icon: Icons.grid_view_outlined,
               title: "Activity Trends",
               subtitle: "Main analytics and growth charts.",
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ActivityTrendsScreen()),
+              ),
             ),
             const SizedBox(height: 12),
+
+            // FIXED: Đã đấu nối trực tiếp đến ActivityHeatmapScreen xịn 🎯
             _buildManagementCard(
               icon: Icons.show_chart_outlined,
               title: "Activity Heatmap",
               subtitle: "Visualize regional traffic patterns.",
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ActivityHeatmapScreen()),
+              ),
             ),
             const SizedBox(height: 40),
           ],
@@ -204,7 +242,6 @@ class ActivityCenterScreen extends StatelessWidget {
         ],
       ),
       child: Column(
-        // ĐÃ SỬA CÚ PHÁP CHUẨN TẠI ĐÂY 👇
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -244,43 +281,51 @@ class ActivityCenterScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildManagementCard({required IconData icon, required String title, required String subtitle}) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF0F2F5),
-              shape: BoxShape.circle,
+  Widget _buildManagementCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
-            child: Icon(icon, color: primaryBlue, size: 22),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: darkText)),
-                const SizedBox(height: 2),
-                Text(subtitle, style: const TextStyle(fontSize: 11, color: secondaryText)),
-              ],
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF0F2F5),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: primaryBlue, size: 22),
             ),
-          ),
-          Icon(Icons.chevron_right, color: Colors.grey.shade400, size: 20),
-        ],
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: darkText)),
+                  const SizedBox(height: 2),
+                  Text(subtitle, style: const TextStyle(fontSize: 11, color: secondaryText)),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: Colors.grey.shade400, size: 20),
+          ],
+        ),
       ),
     );
   }
