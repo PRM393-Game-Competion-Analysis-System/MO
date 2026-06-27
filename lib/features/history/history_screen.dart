@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mo/widgets/custom_bottom_nav_bar.dart';
 import 'package:mo/features/cloud_sync/cloud_sync_screen.dart';
+import 'package:mo/features/player_lookup/player_lookup_screen.dart';
 
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
@@ -180,6 +181,11 @@ class HistoryScreen extends StatelessWidget {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (context) => const CloudSyncScreen()),
+            );
+          } else if (index == 3) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const PlayerLookupScreen()),
             );
           }
         },
