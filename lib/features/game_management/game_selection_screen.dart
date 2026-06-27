@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mo/features/mock_data/login-mock-data.dart';
 import 'package:mo/widgets/custom_bottom_nav_bar.dart';
 import 'package:mo/features/cloud_sync/cloud_sync_screen.dart';
+import 'package:mo/features/history/history_screen.dart';
 
 class GameSelectionScreen extends StatelessWidget {
   // Required data parameters passed from LoginScreen
@@ -105,7 +106,12 @@ class GameSelectionScreen extends StatelessWidget {
       bottomNavigationBar: CustomBottomNavBar(
         currentIndex: 0, // Highlight the Home tab
         onTap: (index) {
-          if (index == 2) {
+          if (index == 1) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const HistoryScreen()),
+            );
+          } else if (index == 2) {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const CloudSyncScreen()),
