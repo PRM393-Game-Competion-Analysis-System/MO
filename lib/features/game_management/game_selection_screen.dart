@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:mo/features/mock_data/login-mock-data.dart';
 import 'package:mo/features/cloud_sync/cloud_sync_screen.dart';
+import 'package:mo/features/game_management/upload_and_analyze_screen.dart'; // Imported the new screen
 
 class GameSelectionScreen extends StatelessWidget {
-  // Required data parameters passed from LoginScreen via MainLayout
   final UserModel user;
   final List<GameModel> games;
 
@@ -13,20 +13,18 @@ class GameSelectionScreen extends StatelessWidget {
     required this.games,
   });
 
-  // Color palette matching the design
   static const Color primaryBlue = Color(0xFF1E40AF);
   static const Color accentOrange = Color(0xFFF59E0B);
   static const Color darkText = Color(0xFF1A1D20);
 
   @override
   Widget build(BuildContext context) {
-    // Select the first game from mock data as the featured item
     final featuredGame = games.isNotEmpty ? games.first : null;
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        top: false, // Allows the banner image to sit beautifully against the status bar
+        top: false,
         child: Stack(
           children: [
             Column(
@@ -36,27 +34,17 @@ class GameSelectionScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // 1. Header Banner with local asset image
                         _buildHeaderBanner(context, user),
-
                         const SizedBox(height: 20),
-
-                        // 2. Filter row (All, RPG, FPS, MOBA)
                         _buildFilterRow(),
-
                         const SizedBox(height: 20),
-
-                        // 3. Dynamic Game Card display
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16.0),
                           child: featuredGame != null
                               ? _buildGameCard(featuredGame)
                               : const Text("No games available"),
                         ),
-
                         const SizedBox(height: 16),
-
-                        // Pagination indicator dots
                         const Center(
                           child: Text(
                             "● ● ●",
@@ -67,26 +55,22 @@ class GameSelectionScreen extends StatelessWidget {
                             ),
                           ),
                         ),
-
                         const SizedBox(height: 20),
 
-                        // 4. Sticky Action Bar showing selected item details
+                        // FIXED: Passed context safely down to the action bar handler 👇
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16.0),
                           child: featuredGame != null
-                              ? _buildSelectedActionBar(featuredGame)
+                              ? _buildSelectedActionBar(context, featuredGame)
                               : const SizedBox(),
                         ),
-
-                        const SizedBox(height: 100), // Padding spacer at bottom
+                        const SizedBox(height: 100),
                       ],
                     ),
                   ),
                 ),
               ],
             ),
-
-            // Floating Refresh Button aligned right above global bottom navigation
             Positioned(
               right: 20,
               bottom: kBottomNavigationBarHeight + 20,
@@ -100,11 +84,9 @@ class GameSelectionScreen extends StatelessWidget {
           ],
         ),
       ),
-      // REMOVED: bottomNavigationBar property is now completely handled by MainLayout globally!
     );
   }
 
-  // --- HEADER BANNER WIDGET WITH SEARCHBAR ---
   Widget _buildHeaderBanner(BuildContext context, UserModel user) {
     return Stack(
       clipBehavior: Clip.none,
@@ -162,7 +144,6 @@ class GameSelectionScreen extends StatelessWidget {
             ),
           ),
         ),
-        // Search bar overlapping header bottom edge
         Positioned(
           bottom: -24,
           left: 24,
@@ -194,7 +175,6 @@ class GameSelectionScreen extends StatelessWidget {
     );
   }
 
-  // --- FILTER CHIPS ROW WIDGET ---
   Widget _buildFilterRow() {
     final List<String> categories = ["All", "RPG", "FPS", "MOBA"];
     return Padding(
@@ -243,7 +223,6 @@ class GameSelectionScreen extends StatelessWidget {
     );
   }
 
-  // --- DYNAMIC GAME DISPLAY CARD WIDGET ---
   Widget _buildGameCard(GameModel game) {
     return Container(
       decoration: BoxDecoration(
@@ -372,7 +351,7 @@ class GameSelectionScreen extends StatelessWidget {
   }
 
   // --- STICKY FOOTER ACTION BAR WIDGET ---
-  Widget _buildSelectedActionBar(GameModel game) {
+  Widget _buildSelectedActionBar(BuildContext context, GameModel game) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
@@ -403,15 +382,34 @@ class GameSelectionScreen extends StatelessWidget {
               ),
             ],
           ),
-          const Row(
-            children: [
-              Text(
-                "Next Step",
-                style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+
+          // FIXED: Wrapped the trailing action row in a clickable GestureDetector for clean screen transition 🎯
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const UploadAndAnalyzeScreen(),
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15), // Smooth highlight visual cue
+                borderRadius: BorderRadius.circular(8),
               ),
-              SizedBox(width: 6),
-              Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
-            ],
+              child: const Row(
+                children: [
+                  Text(
+                    "Next Step",
+                    style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(width: 6),
+                  Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+                ],
+              ),
+            ),
           )
         ],
       ),
