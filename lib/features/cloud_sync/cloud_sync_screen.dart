@@ -1,8 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:mo/widgets/custom_bottom_nav_bar.dart';
-import 'package:mo/features/history/history_screen.dart';
-import 'package:mo/features/player_lookup/player_lookup_screen.dart';
-import 'package:mo/features/profile/profile_screen.dart';
 
 class CloudSyncScreen extends StatelessWidget {
   const CloudSyncScreen({super.key});
@@ -179,14 +175,13 @@ class CloudSyncScreen extends StatelessWidget {
             const SizedBox(height: 16),
 
             // Screenshots Grid
-            // Screenshots Grid - Copy đoạn này đè lên phần cũ
             Row(
               children: [
                 Expanded(
                   child: _buildScreenshotCard(
                     "Elden Ring",
                     "Synced 2 mins ago",
-                    "https://images.unsplash.com/photo-1612287230202-1ff1d85d1bdf?q=80&w=500", // Link Unsplash
+                    "https://images.unsplash.com/photo-1612287230202-1ff1d85d1bdf?q=80&w=500",
                     isNew: true,
                   ),
                 ),
@@ -195,7 +190,7 @@ class CloudSyncScreen extends StatelessWidget {
                   child: _buildScreenshotCard(
                     "Cyberpunk 2077",
                     "Synced 15 mins ago",
-                    "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=500", // Link Unsplash
+                    "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=500",
                   ),
                 ),
               ],
@@ -231,29 +226,7 @@ class CloudSyncScreen extends StatelessWidget {
         shape: const CircleBorder(),
         child: const Icon(Icons.refresh, color: Colors.white),
       ),
-      bottomNavigationBar: CustomBottomNavBar(
-        currentIndex: 2, // Dashboard index
-        onTap: (index) {
-          if (index == 0) {
-            Navigator.pop(context);
-          } else if (index == 1) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const HistoryScreen()),
-            );
-          } else if (index == 3) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const PlayerLookupScreen()),
-            );
-          } else if (index == 4) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const ProfileScreen()),
-            );
-          }
-        },
-      ),
+      // REMOVED: bottomNavigationBar property is now entirely handled by MainLayout globally!
     );
   }
 

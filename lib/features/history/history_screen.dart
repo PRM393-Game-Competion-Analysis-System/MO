@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:mo/widgets/custom_bottom_nav_bar.dart';
 import 'package:mo/features/cloud_sync/cloud_sync_screen.dart';
 import 'package:mo/features/player_lookup/player_lookup_screen.dart';
 import 'package:mo/features/profile/profile_screen.dart';
@@ -131,7 +130,7 @@ class HistoryScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // History Cards
+            // History Cards loaded dynamically
             _buildHistoryCard(
               gameName: "Genshin Impact",
               id: "ANL-98254",
@@ -173,29 +172,7 @@ class HistoryScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: CustomBottomNavBar(
-        currentIndex: 1, // History index
-        onTap: (index) {
-          if (index == 0) {
-            Navigator.pop(context);
-          } else if (index == 2) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const CloudSyncScreen()),
-            );
-          } else if (index == 3) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const PlayerLookupScreen()),
-            );
-          } else if (index == 4) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const ProfileScreen()),
-            );
-          }
-        },
-      ),
+      // REMOVED: bottomNavigationBar is now entirely managed by MainLayout dynamically!
     );
   }
 

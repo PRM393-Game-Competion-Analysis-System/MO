@@ -1,8 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:mo/widgets/custom_bottom_nav_bar.dart';
-import 'package:mo/features/history/history_screen.dart';
-import 'package:mo/features/cloud_sync/cloud_sync_screen.dart';
-import 'package:mo/features/profile/profile_screen.dart';
 
 class PlayerLookupScreen extends StatelessWidget {
   const PlayerLookupScreen({super.key});
@@ -197,20 +193,7 @@ class PlayerLookupScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: CustomBottomNavBar(
-        currentIndex: 3, // Players index
-        onTap: (index) {
-          if (index == 0) {
-            Navigator.pop(context);
-          } else if (index == 1) {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HistoryScreen()));
-          } else if (index == 2) {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const CloudSyncScreen()));
-          } else if (index == 4) {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
-          }
-        },
-      ),
+      // REMOVED: bottomNavigationBar property is now entirely managed by MainLayout globally!
     );
   }
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mo/features/auth/register.dart';
 import 'package:mo/features/mock_data/login-mock-data.dart';
-import 'package:mo/features/game_management/game_selection_screen.dart';
+import 'package:mo/widgets/main_layout.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -19,12 +19,12 @@ class _LoginScreenState extends State<LoginScreen> {
   static const Color primaryBlue = Color(0xFF1129A4);
   static const Color secondaryText = Color(0xFF6C757D);
 
-  // Helper method to handle navigation and pass Mock Data
+  // Helper method to handle navigation and pass Mock Data via MainLayout
   void _navigateToGameSelection(UserModel user) {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => GameSelectionScreen(
+        builder: (context) => MainLayout(
           user: user,
           games: LoginMockData.mockGames,
         ),
@@ -232,10 +232,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 32),
 
                   // OAuth Divider
-                  Row(
+                  const Row(
                     children: [
-                      const Expanded(child: Divider()),
-                      const Padding(
+                      Expanded(child: Divider()),
+                      Padding(
                         padding: EdgeInsets.symmetric(horizontal: 16),
                         child: Text(
                           "OR CONTINUE WITH",
@@ -247,7 +247,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ),
-                      const Expanded(child: Divider()),
+                      Expanded(child: Divider()),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -269,7 +269,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // Footer Navigation Links
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.center, // ĐÃ FIX LỖI TẠI ĐÂY 🎯
                     children: [
                       const Text(
                         "Don't have an account? ",
