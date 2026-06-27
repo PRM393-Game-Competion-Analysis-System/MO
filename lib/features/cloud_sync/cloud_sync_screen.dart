@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mo/widgets/custom_bottom_nav_bar.dart';
+import 'package:mo/features/history/history_screen.dart';
 
 class CloudSyncScreen extends StatelessWidget {
   const CloudSyncScreen({super.key});
@@ -233,6 +234,11 @@ class CloudSyncScreen extends StatelessWidget {
         onTap: (index) {
           if (index == 0) {
             Navigator.pop(context);
+          } else if (index == 1) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const HistoryScreen()),
+            );
           }
         },
       ),
