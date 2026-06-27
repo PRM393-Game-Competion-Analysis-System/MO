@@ -20,12 +20,12 @@ class _LoginScreenState extends State<LoginScreen> {
   static const Color secondaryText = Color(0xFF6C757D);
 
   // Helper method to handle navigation and pass Mock Data
-  void _navigateToGameSelection() {
+  void _navigateToGameSelection(UserModel user) {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (context) => GameSelectionScreen(
-          user: LoginMockData.mockUser,
+          user: user,
           games: LoginMockData.mockGames,
         ),
       ),
@@ -64,15 +64,18 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 children: [
                   const SizedBox(height: 20),
-                  // App Logo
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: const BoxDecoration(
-                      color: darkText,
-                      shape: BoxShape.circle,
+                  // App Logo (Long press for Admin testing)
+                  GestureDetector(
+                    onLongPress: () => _navigateToGameSelection(LoginMockData.mockAdmin),
+                    child: Container(
+                      width: 56,
+                      height: 56,
+                      decoration: const BoxDecoration(
+                        color: darkText,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.bolt, color: Colors.white, size: 32),
                     ),
-                    child: const Icon(Icons.bolt, color: Colors.white, size: 32),
                   ),
                   const SizedBox(height: 24),
                   // Title & Subtitle
@@ -199,12 +202,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           ],
                         ),
                         const SizedBox(height: 24),
-                        // Primary Sign In Button
+                        // Primary Sign In Button (Normal user)
                         SizedBox(
                           width: double.infinity,
                           height: 52,
                           child: ElevatedButton(
-                            onPressed: _navigateToGameSelection,
+                            onPressed: () => _navigateToGameSelection(LoginMockData.mockUser),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: primaryBlue,
                               foregroundColor: Colors.white,
@@ -253,14 +256,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   _buildSocialButton(
                     label: "Continue with Google",
                     iconPath: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
-                    onPressed: _navigateToGameSelection,
+                    onPressed: () => _navigateToGameSelection(LoginMockData.mockUser),
                     isColor: true,
                   ),
                   const SizedBox(height: 12),
                   _buildSocialButton(
                     label: "Continue with GitHub",
                     iconPath: 'https://cdn-icons-png.flaticon.com/512/25/25231.png',
-                    onPressed: _navigateToGameSelection,
+                    onPressed: () => _navigateToGameSelection(LoginMockData.mockUser),
                   ),
                   const SizedBox(height: 24),
 

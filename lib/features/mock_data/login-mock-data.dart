@@ -2,8 +2,17 @@
 class UserModel {
   final String username;
   final String avatarUrl;
+  final String email;
+  final String role; // 'user' hoặc 'admin'
 
-  UserModel({required this.username, required this.avatarUrl});
+  UserModel({
+    required this.username,
+    required this.avatarUrl,
+    required this.email,
+    required this.role,
+  });
+
+  bool get isAdmin => role == 'admin';
 }
 
 // Định nghĩa cấu trúc thông tin một tựa Game
@@ -27,13 +36,23 @@ class GameModel {
 
 // Nơi chứa dữ liệu giả lập để gọi ở bất cứ đâu trong App
 class LoginMockData {
-  // 1. Giả lập tài khoản vừa đăng nhập thành công
+  // 1. Giả lập tài khoản User thường
   static final UserModel mockUser = UserModel(
-    username: "Dottore",
+    username: "Alex Player",
+    email: "alex@gmail.com",
+    role: "user",
     avatarUrl: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200",
   );
 
-  // 2. Giả lập danh sách Game đổ vào thư viện
+  // 2. Giả lập tài khoản Admin
+  static final UserModel mockAdmin = UserModel(
+    username: "Admin Alex",
+    email: "admin@mo-ai.com",
+    role: "admin",
+    avatarUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200",
+  );
+
+  // 3. Giả lập danh sách Game đổ vào thư viện
   static final List<GameModel> mockGames = [
     GameModel(
       title: "Eternal Guardians",

@@ -4,6 +4,8 @@ import 'package:mo/widgets/custom_bottom_nav_bar.dart';
 import 'package:mo/features/cloud_sync/cloud_sync_screen.dart';
 import 'package:mo/features/history/history_screen.dart';
 import 'package:mo/features/player_lookup/player_lookup_screen.dart';
+import 'package:mo/features/profile/profile_screen.dart';
+import 'package:mo/features/profile/admin_profile_screen.dart';
 
 class GameSelectionScreen extends StatelessWidget {
   // Required data parameters passed from LoginScreen
@@ -121,6 +123,13 @@ class GameSelectionScreen extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const PlayerLookupScreen()),
+            );
+          } else if (index == 4) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => user.isAdmin ? const AdminProfileScreen() : const ProfileScreen(),
+              ),
             );
           }
           debugPrint("Selected navigation index: $index");
