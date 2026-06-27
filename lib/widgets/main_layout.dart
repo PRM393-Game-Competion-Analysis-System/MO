@@ -7,9 +7,10 @@ import 'package:mo/features/history/history_screen.dart';
 import 'package:mo/features/cloud_sync/cloud_sync_screen.dart';
 import 'package:mo/features/player_lookup/player_lookup_screen.dart';
 import 'package:mo/features/profile/profile_screen.dart';
+import 'package:mo/features/profile/admin_profile_screen.dart';
+import 'package:mo/features/game_management/dashboard_screen.dart';
 
 class MainLayout extends StatefulWidget {
-  // Pass dynamic user data down from LoginScreen
   final UserModel user;
   final List<GameModel> games;
 
@@ -29,27 +30,25 @@ class _MainLayoutState extends State<MainLayout> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // IndexedStack preserves the state of each tab to prevent reloading data
       body: IndexedStack(
         index: _currentTab.index,
         children: [
           GameSelectionScreen(
             user: widget.user,
             games: widget.games,
-          ), // Tab 0: Home
-          const HistoryScreen(),       // Tab 1: History
-          const Center(child: Text('Dashboard')), // Tab 2: Dashboard
-          const PlayerLookupScreen(),  // Tab 3: Players
-          const CloudSyncScreen(),     // Tab 4: Cloud Sync
-          const ProfileScreen(),       // Tab 5: Profile
+          ),
+          const HistoryScreen(),
+          const DashboardScreen(),
+          const PlayerLookupScreen(),
+          const CloudSyncScreen(),
+          widget.user.isAdmin ? const AdminProfileScreen() : const ProfileScreen(),
         ],
       ),
-      // FIXED: Aligned parameters perfectly with your Enum-driven CustomBottomNavBar 👇
       bottomNavigationBar: CustomBottomNavBar(
-        currentTab: _currentTab, // Passes the current active Enum tab
+        currentTab: _currentTab,
         onTabSelected: (AppTab selectedTab) {
           setState(() {
-            _currentTab = selectedTab; // Updates the state beautifully on click
+            _currentTab = selectedTab;
           });
         },
       ),
