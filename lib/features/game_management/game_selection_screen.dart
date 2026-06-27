@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mo/features/mock_data/login-mock-data.dart';
 import 'package:mo/widgets/custom_bottom_nav_bar.dart';
+import 'package:mo/features/cloud_sync/cloud_sync_screen.dart';
 
 class GameSelectionScreen extends StatelessWidget {
   // Required data parameters passed from LoginScreen
@@ -37,7 +38,7 @@ class GameSelectionScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // 1. Header Banner with local asset image
-                        _buildHeaderBanner(user),
+                        _buildHeaderBanner(context, user),
 
                         const SizedBox(height: 20),
 
@@ -104,7 +105,12 @@ class GameSelectionScreen extends StatelessWidget {
       bottomNavigationBar: CustomBottomNavBar(
         currentIndex: 0, // Highlight the Home tab
         onTap: (index) {
-          // Handle tab changes here later
+          if (index == 2) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const CloudSyncScreen()),
+            );
+          }
           debugPrint("Selected navigation index: $index");
         },
       ),
@@ -112,7 +118,7 @@ class GameSelectionScreen extends StatelessWidget {
   }
 
   // --- HEADER BANNER WIDGET WITH SEARCHBAR ---
-  Widget _buildHeaderBanner(UserModel user) {
+  Widget _buildHeaderBanner(BuildContext context, UserModel user) {
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -142,7 +148,15 @@ class GameSelectionScreen extends StatelessWidget {
               children: [
                 Align(
                   alignment: Alignment.topRight,
-                  child: Icon(Icons.sync, color: Colors.blue.shade300, size: 22),
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const CloudSyncScreen()),
+                      );
+                    },
+                    child: Icon(Icons.sync, color: Colors.blue.shade300, size: 22),
+                  ),
                 ),
                 RichText(
                   textAlign: TextAlign.center,
