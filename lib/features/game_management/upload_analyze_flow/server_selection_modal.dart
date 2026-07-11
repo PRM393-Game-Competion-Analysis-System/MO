@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:mo/API/api.dart';
 
 class ServerSelectionModal extends StatelessWidget {
   final String currentSelected;
   final ValueChanged<String> onServerConfirmed;
   final VoidCallback onClose;
+  final List<ServerModel> servers;
 
   const ServerSelectionModal({
     super.key,
     required this.currentSelected,
     required this.onServerConfirmed,
     required this.onClose,
+    required this.servers,
   });
 
   static const Color primaryBlue = Color(0xFF1129A4);
@@ -48,15 +51,46 @@ class ServerSelectionModal extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(color: const Color(0xFFF1F3F5), borderRadius: BorderRadius.circular(8)),
-                  child: const Text("3 Regions", style: TextStyle(color: secondaryText, fontSize: 11, fontWeight: FontWeight.bold)),
+                  child: Text(
+                    "${servers.length} Servers",
+                    style: const TextStyle(color: secondaryText, fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            _buildServerListItem("North America (NA)", "Virginia, US", "Online", "Low", true, Colors.green),
-            const SizedBox(height: 12),
-            _buildServerListItem("Europe (EU)", "Frankfurt, DE", "Online", "Med", false, Colors.grey),
-            _buildServerListItem("Asia (AS)", "Tokyo, JP", "Busy", "High", false, Colors.redAccent, isHighLatency: true),
+            Flexible(
+              child: servers.isEmpty
+                  ? const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 40.0),
+                      child: Text("No servers available for this game.", style: TextStyle(color: secondaryText)),
+                    )
+                  : ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: servers.length,
+                      separatorBuilder: (context, index) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final server = servers[index];
+                        final isSelected = server.serverName == currentSelected;
+                        final isHighLatency = server.status == 'busy';
+                        final ping = isHighLatency ? "High" : "Low";
+                        final dotColor = server.status == 'active' ? Colors.green : Colors.grey;
+
+                        return GestureDetector(
+                          onTap: () => onServerConfirmed(server.serverName),
+                          child: _buildServerListItem(
+                            server.serverName,
+                            server.region.isNotEmpty ? server.region : "Global",
+                            server.status,
+                            ping,
+                            isSelected,
+                            dotColor,
+                            isHighLatency: isHighLatency,
+                          ),
+                        );
+                      },
+                    ),
+            ),
             const SizedBox(height: 24),
             Container(
               padding: const EdgeInsets.all(16),
@@ -64,16 +98,25 @@ class ServerSelectionModal extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("SELECTED SERVICE", style: TextStyle(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.bold)),
-                      SizedBox(height: 2),
-                      Text("North America", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                    ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text("SELECTED SERVICE", style: TextStyle(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 2),
+                        Text(
+                          currentSelected,
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
                   ),
                   GestureDetector(
-                    onTap: () => onServerConfirmed("Global-1"),
+                    onTap: currentSelected == "------" || currentSelected.isEmpty
+                        ? null
+                        : () => onServerConfirmed(currentSelected),
                     child: const Row(
                       children: [
                         Text("Confirm", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),

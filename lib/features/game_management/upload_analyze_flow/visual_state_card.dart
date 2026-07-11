@@ -1,18 +1,26 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../upload_and_analyze_screen.dart';
 
 class VisualStateCard extends StatelessWidget {
   final AnalyzeStep currentStep;
+  final XFile? pickedImage;
   final VoidCallback onUploadTriggered;
   final VoidCallback onClearTriggered;
   final VoidCallback onReAnalyzeTriggered;
+  final String gameTitle;
+  final String selectedServerName;
 
   const VisualStateCard({
     super.key,
     required this.currentStep,
+    required this.pickedImage,
     required this.onUploadTriggered,
     required this.onClearTriggered,
     required this.onReAnalyzeTriggered,
+    required this.gameTitle,
+    required this.selectedServerName,
   });
 
   static const Color primaryBlue = Color(0xFF1129A4);
@@ -52,11 +60,16 @@ class VisualStateCard extends StatelessWidget {
               child: Container(
                 height: 280,
                 width: double.infinity,
-                decoration: const BoxDecoration(
-                  image: DecorationImage(
-                    image: NetworkImage("https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=600"),
-                    fit: BoxFit.cover,
-                  ),
+                decoration: BoxDecoration(
+                  image: pickedImage != null
+                      ? DecorationImage(
+                          image: FileImage(File(pickedImage!.path)),
+                          fit: BoxFit.cover,
+                        )
+                      : const DecorationImage(
+                          image: NetworkImage("https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=600"),
+                          fit: BoxFit.cover,
+                        ),
                 ),
                 child: Container(
                   alignment: Alignment.bottomLeft,
@@ -68,13 +81,13 @@ class VisualStateCard extends StatelessWidget {
                       colors: [Colors.transparent, Colors.black.withValues(alpha: 0.7)],
                     ),
                   ),
-                  child: const Column(
+                  child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("game_snap_042.png", style: TextStyle(color: Colors.white70, fontSize: 11)),
-                      SizedBox(height: 2),
-                      Text("Genshin Impact • Asia Server", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                      Text(pickedImage != null ? pickedImage!.name : "game_snap_042.png", style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                      const SizedBox(height: 2),
+                      Text("$gameTitle • $selectedServerName", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
                     ],
                   ),
                 ),
@@ -101,11 +114,16 @@ class VisualStateCard extends StatelessWidget {
           child: Container(
             height: 160,
             width: double.infinity,
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: NetworkImage("https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=600"),
-                fit: BoxFit.cover,
-              ),
+            decoration: BoxDecoration(
+              image: pickedImage != null
+                  ? DecorationImage(
+                      image: FileImage(File(pickedImage!.path)),
+                      fit: BoxFit.cover,
+                    )
+                  : const DecorationImage(
+                      image: NetworkImage("https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=600"),
+                      fit: BoxFit.cover,
+                    ),
             ),
             child: Container(
               color: primaryBlue.withValues(alpha: 0.8),
@@ -160,7 +178,7 @@ class VisualStateCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   _buildResultMetaBox(Icons.access_time, "DURATION", "1.4s"),
                   const SizedBox(width: 8),
-                  _buildResultMetaBox(Icons.emoji_events_outlined, "PLAYERS", "48 Found"),
+                  _buildResultMetaBox(Icons.emoji_events_outlined, "PLAYERS", "Verified"),
                 ],
               ),
               const SizedBox(height: 16),

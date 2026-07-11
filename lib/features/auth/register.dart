@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mo/features/auth/login.dart';
+import 'package:mo/API/api.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -9,9 +10,80 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
+
+  bool _isLoading = false;
   bool _agreeToTerms = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  void _handleRegister() async {
+    final username = _usernameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
+
+    if (username.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng điền đầy đủ tất cả thông tin.')),
+      );
+      return;
+    }
+
+    if (password != confirmPassword) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Mật khẩu và xác nhận mật khẩu không khớp.')),
+      );
+      return;
+    }
+
+    if (!_agreeToTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Bạn phải đồng ý với Điều khoản Dịch vụ và Chính sách Bảo mật.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final message = await ApiService.register(username, email, password);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+      // Navigate back to Login Screen
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   static const Color bgColor = Color(0xFFF8F9FA);
   static const Color cardColor = Colors.white;
@@ -103,12 +175,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           label: "Username",
                           hint: "Enter your gamer tag",
                           icon: Icons.person_outline,
+                          controller: _usernameController,
                         ),
                         const SizedBox(height: 20),
                         _buildInputField(
                           label: "Email Address",
                           hint: "name@example.com",
                           icon: Icons.email_outlined,
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
                         ),
                         const SizedBox(height: 20),
                         _buildInputField(
@@ -120,6 +195,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           onToggleVisibility: () {
                             setState(() => _obscurePassword = !_obscurePassword);
                           },
+                          controller: _passwordController,
                         ),
                         const SizedBox(height: 20),
                         _buildInputField(
@@ -131,6 +207,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           onToggleVisibility: () {
                             setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
                           },
+                          controller: _confirmPasswordController,
                         ),
                         const SizedBox(height: 20),
                         Row(
@@ -175,7 +252,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           width: double.infinity,
                           height: 52,
                           child: ElevatedButton(
-                            onPressed: () {},
+                            onPressed: _isLoading ? null : _handleRegister,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: primaryBlue,
                               foregroundColor: Colors.white,
@@ -184,14 +261,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                               elevation: 0,
                             ),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text("Create", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                                SizedBox(width: 8),
-                                Icon(Icons.arrow_forward, size: 18),
-                              ],
-                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2.5,
+                                    ),
+                                  )
+                                : const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text("Create", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                      SizedBox(width: 8),
+                                      Icon(Icons.arrow_forward, size: 18),
+                                    ],
+                                  ),
                           ),
                         ),
                       ],
@@ -261,6 +347,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     bool isPassword = false,
     bool obscureText = false,
     VoidCallback? onToggleVisibility,
+    TextEditingController? controller,
+    TextInputType? keyboardType,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -275,6 +363,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         const SizedBox(height: 8),
         TextFormField(
+          controller: controller,
+          keyboardType: keyboardType,
           obscureText: obscureText,
           decoration: InputDecoration(
             hintText: hint,

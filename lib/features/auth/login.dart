@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mo/features/auth/register.dart';
 import 'package:mo/features/mock_data/login-mock-data.dart';
 import 'package:mo/widgets/main_layout.dart';
+import 'package:mo/API/api.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,7 +12,63 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  bool _isLoading = false;
   bool _keepMeSignedIn = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _handleLogin() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng nhập đầy đủ email và mật khẩu.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final user = await ApiService.login(email, password);
+      if (!mounted) return;
+      if (user != null) {
+        List<GameModel> games = [];
+        try {
+          games = await ApiService.getGames();
+        } catch (_) {
+          games = LoginMockData.mockGames;
+        }
+        if (!mounted) return;
+        _navigateToGameSelection(user, games);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đăng nhập thất bại: Phản hồi không hợp lệ.')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   static const Color bgColor = Color(0xFFF8F9FA);
   static const Color cardColor = Colors.white;
@@ -20,13 +77,13 @@ class _LoginScreenState extends State<LoginScreen> {
   static const Color secondaryText = Color(0xFF6C757D);
 
   // Helper method to handle navigation and pass Mock Data via MainLayout
-  void _navigateToGameSelection(UserModel user) {
+  void _navigateToGameSelection(UserModel user, List<GameModel> games) {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (context) => MainLayout(
           user: user,
-          games: LoginMockData.mockGames,
+          games: games,
         ),
       ),
     );
@@ -66,7 +123,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 20),
                   // App Logo (Long press for Admin testing)
                   GestureDetector(
-                    onLongPress: () => _navigateToGameSelection(LoginMockData.mockAdmin),
+                    onLongPress: () => _navigateToGameSelection(LoginMockData.mockAdmin, LoginMockData.mockGames),
                     child: Container(
                       width: 56,
                       height: 56,
@@ -125,6 +182,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 8),
                         TextFormField(
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
                           decoration: InputDecoration(
                             hintText: "name@example.com",
                             prefixIcon: const Icon(Icons.email_outlined, size: 20),
@@ -150,6 +209,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 8),
                         TextFormField(
+                          controller: _passwordController,
                           obscureText: true,
                           decoration: InputDecoration(
                             hintText: "••••••••",
@@ -207,7 +267,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           width: double.infinity,
                           height: 52,
                           child: ElevatedButton(
-                            onPressed: () => _navigateToGameSelection(LoginMockData.mockUser),
+                            onPressed: _isLoading ? null : _handleLogin,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: primaryBlue,
                               foregroundColor: Colors.white,
@@ -216,14 +276,23 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               elevation: 0,
                             ),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text("Sign In", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                                SizedBox(width: 8),
-                                Icon(Icons.arrow_forward, size: 18),
-                              ],
-                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2.5,
+                                    ),
+                                  )
+                                : const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text("Sign In", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                      SizedBox(width: 8),
+                                      Icon(Icons.arrow_forward, size: 18),
+                                    ],
+                                  ),
                           ),
                         ),
                       ],
@@ -256,14 +325,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   _buildSocialButton(
                     label: "Continue with Google",
                     iconPath: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
-                    onPressed: () => _navigateToGameSelection(LoginMockData.mockUser),
+                    onPressed: () => _navigateToGameSelection(LoginMockData.mockUser, LoginMockData.mockGames),
                     isColor: true,
                   ),
                   const SizedBox(height: 12),
                   _buildSocialButton(
                     label: "Continue with GitHub",
                     iconPath: 'https://cdn-icons-png.flaticon.com/512/25/25231.png',
-                    onPressed: () => _navigateToGameSelection(LoginMockData.mockUser),
+                    onPressed: () => _navigateToGameSelection(LoginMockData.mockUser, LoginMockData.mockGames),
                   ),
                   const SizedBox(height: 24),
 
