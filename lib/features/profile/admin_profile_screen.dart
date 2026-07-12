@@ -1,14 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:mo/API/api.dart';
 import 'package:mo/features/profile/my_profile_screen.dart';
 import 'package:mo/features/profile/activity_center_screen.dart';
 
-class AdminProfileScreen extends StatelessWidget {
+class AdminProfileScreen extends StatefulWidget {
   const AdminProfileScreen({super.key});
 
+  @override
+  State<AdminProfileScreen> createState() => _AdminProfileScreenState();
+}
+
+class _AdminProfileScreenState extends State<AdminProfileScreen> {
   static const Color primaryBlue = Color(0xFF1129A4);
   static const Color bgColor = Color(0xFFF8F9FA);
   static const Color darkText = Color(0xFF1A1D20);
   static const Color secondaryText = Color(0xFF6C757D);
+
+  late Future<ApiUserModel> _profileFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _profileFuture = ApiService.getUserProfile();
+  }
+
+  void _refreshProfile() {
+    setState(() {
+      _profileFuture = ApiService.getUserProfile();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,71 +60,98 @@ class AdminProfileScreen extends StatelessWidget {
           children: [
             const SizedBox(height: 10),
             // Admin Info Card
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const MyProfileScreen()),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.grey.shade100),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.02),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+            FutureBuilder<ApiUserModel>(
+              future: _profileFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Container(
+                    height: 98,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.grey.shade100),
                     ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        image: const DecorationImage(
-                          image: NetworkImage("https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200"),
-                          fit: BoxFit.cover,
+                    child: const CircularProgressIndicator(color: primaryBlue),
+                  );
+                }
+
+                final profile = snapshot.data;
+                final username = profile?.username ?? "Alex V.";
+                final email = profile?.email ?? "alex@gmail.com";
+                final role = profile?.role ?? "user";
+                final avatarUrl = role == 'admin'
+                    ? "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200"
+                    : "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200";
+
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const MyProfileScreen()),
+                    ).then((_) => _refreshProfile());
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.grey.shade100),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.02),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
-                      ),
+                      ],
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            image: DecorationImage(
+                              image: NetworkImage(avatarUrl),
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                "Alex V.",
-                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryBlue),
+                              Row(
+                                children: [
+                                  Text(
+                                    username,
+                                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryBlue),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  if (role == 'admin')
+                                    const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                              const SizedBox(height: 4),
+                              Text(
+                                email,
+                                style: const TextStyle(color: secondaryText, fontSize: 14),
+                              ),
                             ],
                           ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            "alex@gmail.com",
-                            style: TextStyle(color: secondaryText, fontSize: 14),
-                          ),
-                        ],
-                      ),
+                        ),
+                        Container(
+                          width: 1,
+                          height: 40,
+                          color: Colors.grey.shade200,
+                        ),
+                      ],
                     ),
-                    Container(
-                      width: 1,
-                      height: 40,
-                      color: Colors.grey.shade200,
-                    ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 20),
 

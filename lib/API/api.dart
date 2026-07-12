@@ -101,14 +101,17 @@ class ApiService {
 
         final gameId = item['gameId'] ?? 0;
         final playersCount = '${(gameId * 1.2).toStringAsFixed(1)}M';
+        final companyName = item['companyName'] ?? 'Unknown Company';
 
         return GameModel(
+          gameId: gameId,
           title: item['gameName'] ?? 'Unknown Game',
-          description: 'Published by ${item['companyName'] ?? 'Unknown Company'}',
+          description: 'Published by $companyName',
           imageUrl: imageUrl,
           category: genre,
           playersCount: playersCount,
           isPopular: gameId % 2 == 1,
+          companyName: companyName,
         );
       }).toList();
     } else {
@@ -204,13 +207,13 @@ class ApiService {
     }
   }
 
-  static Future<OcrExtractResponse> extractText(String filePath) async {
+  static Future<OcrExtractResponse> extractText(String filePath, {String language = 'vie'}) async {
     final file = File(filePath);
     if (!file.existsSync()) {
       throw Exception('File does not exist at $filePath');
     }
 
-    final url = Uri.parse('https://hxvf123-demoocrserver.hf.space/api/v1/extract?language=eng');
+    final url = Uri.parse('https://hxvf123-demoocrserver.hf.space/api/v1/extract?language=$language');
     final client = HttpClient();
 
     try {
@@ -238,6 +241,29 @@ class ApiService {
         final data = jsonDecode(responseBody);
         return OcrExtractResponse.fromJson(data);
       } else {
+        String? validationMsg;
+        try {
+          final errorData = jsonDecode(responseBody);
+          if (errorData is Map && errorData.containsKey('detail')) {
+            final details = errorData['detail'];
+            if (details is List && details.isNotEmpty) {
+              final firstError = details.first;
+              if (firstError is Map) {
+                final msg = firstError['msg'];
+                final loc = firstError['loc'];
+                if (msg != null) {
+                  validationMsg = 'Extraction validation error: $msg (at $loc)';
+                }
+              }
+            }
+          }
+        } catch (_) {
+          // ignore parsing error
+        }
+
+        if (validationMsg != null) {
+          throw Exception(validationMsg);
+        }
         throw Exception('Extraction failed with status code: ${response.statusCode}');
       }
     } finally {
@@ -298,8 +324,111 @@ class ApiService {
     }
   }
 
+  static Future<ApiUserModel> updateUserProfile(String username, String email) async {
+    final url = Uri.parse('$baseUrl/api/Users/profile');
+    final response = await http.put(
+      url,
+      headers: headers,
+      body: jsonEncode({
+        'username': username,
+        'email': email,
+      }),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 204) {
+      final data = jsonDecode(response.body);
+      return ApiUserModel.fromJson(data);
+    } else {
+      try {
+        final errorData = jsonDecode(response.body);
+        final message = errorData['message'] ?? 'Failed to update profile.';
+        throw Exception(message);
+      } catch (_) {
+        throw Exception('Server returned status code: ${response.statusCode}');
+      }
+    }
+  }
+
   static Future<void> deleteUser(int id) async {
     final url = Uri.parse('$baseUrl/api/Users/$id');
+    final response = await http.delete(url, headers: headers);
+
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception('Server returned status code: ${response.statusCode}');
+    }
+  }
+
+  static Future<GameModel> createGame(String gameName, String genre, String companyName) async {
+    final url = Uri.parse('$baseUrl/api/Games');
+    final response = await http.post(
+      url,
+      headers: headers,
+      body: jsonEncode({
+        'gamename': gameName,
+        'genre': genre,
+        'company': {
+          'companyname': companyName,
+        }
+      }),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final data = jsonDecode(response.body);
+      final genreVal = data['genre'] ?? 'Other';
+      final gameId = data['gameId'] ?? 0;
+      final companyNameVal = data['companyName'] ?? companyName;
+      return GameModel(
+        gameId: gameId,
+        title: data['gameName'] ?? gameName,
+        description: 'Published by $companyNameVal',
+        imageUrl: genreVal == 'MOBA'
+            ? 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=800'
+            : 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=800',
+        category: genreVal,
+        playersCount: '0.0M',
+        isPopular: false,
+        companyName: companyNameVal,
+      );
+    } else {
+      throw Exception('Server returned status code: ${response.statusCode}');
+    }
+  }
+
+  static Future<GameModel> updateGame(int id, String gameName, String genre, String companyName) async {
+    final url = Uri.parse('$baseUrl/api/Games/$id');
+    final response = await http.put(
+      url,
+      headers: headers,
+      body: jsonEncode({
+        'gameid': id,
+        'gamename': gameName,
+        'genre': genre,
+        'company': {
+          'companyname': companyName,
+        }
+      }),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 204) {
+      return GameModel(
+        gameId: id,
+        title: gameName,
+        description: 'Published by $companyName',
+        imageUrl: genre == 'MOBA'
+            ? 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=800'
+            : 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=800',
+        category: genre,
+        playersCount: '0.0M',
+        isPopular: false,
+        companyName: companyName,
+      );
+    } else {
+      throw Exception('Server returned status code: ${response.statusCode}');
+    }
+  }
+
+  static Future<void> deleteGame(int id) async {
+    final url = Uri.parse('$baseUrl/api/Games/$id');
     final response = await http.delete(url, headers: headers);
 
     if (response.statusCode != 200 && response.statusCode != 204) {
@@ -433,7 +562,7 @@ class OcrExtractResponse {
   final int height;
   final String fullText;
   final List<TextBlock> textBlocks;
-  final int processingTimeMs;
+  final double processingTimeMs;
 
   OcrExtractResponse({
     required this.success,
@@ -453,11 +582,11 @@ class OcrExtractResponse {
       success: json['success'] ?? false,
       filename: json['filename'] ?? '',
       language: json['language'] ?? 'eng',
-      width: size['width'] ?? 0,
-      height: size['height'] ?? 0,
+      width: (size['width'] as num?)?.toInt() ?? 0,
+      height: (size['height'] as num?)?.toInt() ?? 0,
       fullText: json['full_text'] ?? '',
       textBlocks: blocks.map((b) => TextBlock.fromJson(b)).toList(),
-      processingTimeMs: json['processing_time_ms'] ?? 0,
+      processingTimeMs: (json['processing_time_ms'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }
@@ -483,11 +612,11 @@ class TextBlock {
     final box = json['bounding_box'] ?? {};
     return TextBlock(
       text: json['text'] ?? '',
-      confidence: json['confidence'] ?? 0,
-      x: box['x'] ?? 0,
-      y: box['y'] ?? 0,
-      width: box['width'] ?? 0,
-      height: box['height'] ?? 0,
+      confidence: (json['confidence'] as num?)?.toInt() ?? 0,
+      x: (box['x'] as num?)?.toInt() ?? 0,
+      y: (box['y'] as num?)?.toInt() ?? 0,
+      width: (box['width'] as num?)?.toInt() ?? 0,
+      height: (box['height'] as num?)?.toInt() ?? 0,
     );
   }
 }

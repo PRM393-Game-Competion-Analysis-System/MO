@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:mo/API/api.dart';
 
-enum UserFilterTab { all, admins, moderators, online }
+enum UserFilterTab { all, admins, users }
 
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
@@ -18,18 +19,168 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   bool _showCreateModal = false;
   bool _showDetailDialog = false;
   UserFilterTab _selectedFilter = UserFilterTab.all;
+  String _searchQuery = "";
 
-  Map<String, String>? _activeUserData;
+  List<ApiUserModel> _users = [];
+  bool _isLoading = true;
+  String _errorMessage = "";
 
-  final List<Map<String, String>> _users = [
-    {"username": "alex_commander", "role": "Admin", "id": "USR-9921", "email": "alex.smith@pixelrank.ai", "status": "online"},
-    {"username": "luna_gamer", "role": "Moderator", "id": "USR-8842", "email": "luna.dev@gaming.com", "status": "away"},
-    {"username": "pixel_pro", "role": "User", "id": "USR-7751", "email": "contact@pixelpro.net", "status": "offline"},
-    {"username": "shadow_striker", "role": "User", "id": "USR-6630", "email": "striker.game@web.de", "status": "online"},
-  ];
+  ApiUserModel? _activeUserData;
+
+  // Controllers for creation modal
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  String _selectedRole = "user"; // "admin" or "user"
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUsers();
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchUsers() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = "";
+    });
+    try {
+      final users = await ApiService.getUsers();
+      setState(() {
+        _users = users;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString().replaceAll("Exception: ", "");
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _createUser() async {
+    final username = _usernameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+    final role = _selectedRole;
+
+    if (username.isEmpty || email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please fill all fields.")),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await ApiService.createUser(username, email, password, role);
+      setState(() {
+        _showCreateModal = false;
+        _usernameController.clear();
+        _emailController.clear();
+        _passwordController.clear();
+      });
+      _fetchUsers();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("User created successfully!")),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to create user: $e")),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteUser(int id) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Delete User"),
+        content: const Text("Are you sure you want to delete this user?"),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+            child: const Text("Delete"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() {
+      _isLoading = true;
+      _showDetailDialog = false;
+    });
+
+    try {
+      await ApiService.deleteUser(id);
+      _fetchUsers();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("User deleted successfully!")),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to delete user: $e")),
+        );
+      }
+    }
+  }
+
+  List<ApiUserModel> _getFilteredUsers() {
+    return _users.where((user) {
+      // 1. Search Query Filter
+      if (_searchQuery.isNotEmpty) {
+        final query = _searchQuery.toLowerCase();
+        final matchesUsername = user.username.toLowerCase().contains(query);
+        final matchesEmail = user.email.toLowerCase().contains(query);
+        final matchesId = user.userId.toString().contains(query);
+        if (!matchesUsername && !matchesEmail && !matchesId) {
+          return false;
+        }
+      }
+
+      // 2. Tab Filter
+      if (_selectedFilter == UserFilterTab.admins) {
+        return user.role.toLowerCase() == 'admin';
+      } else if (_selectedFilter == UserFilterTab.users) {
+        return user.role.toLowerCase() == 'user';
+      }
+
+      return true;
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final filteredUsers = _getFilteredUsers();
+
     return Scaffold(
       backgroundColor: UserManagementScreen.bgColor,
       appBar: _buildAppBar(),
@@ -38,22 +189,54 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           Column(
             children: [
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildSearchBar(),
-                      const SizedBox(height: 16),
-                      _buildFilterChipsRow(),
-                      const SizedBox(height: 20),
-                      _buildSortAndResultsHeader(),
-                      const SizedBox(height: 12),
-                      _buildUserListView(),
-                      const SizedBox(height: 24),
-                      _buildLoadingIndicator(),
-                      const SizedBox(height: 80),
-                    ],
+                child: RefreshIndicator(
+                  onRefresh: _fetchUsers,
+                  color: UserManagementScreen.primaryBlue,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildSearchBar(),
+                        const SizedBox(height: 16),
+                        _buildFilterChipsRow(),
+                        const SizedBox(height: 20),
+                        _buildSortAndResultsHeader(filteredUsers.length),
+                        const SizedBox(height: 12),
+                        if (_isLoading && _users.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 40.0),
+                            child: Center(child: CircularProgressIndicator(color: UserManagementScreen.primaryBlue)),
+                          )
+                        else if (_errorMessage.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 40.0),
+                            child: Center(
+                              child: Column(
+                                children: [
+                                  Text("Error: $_errorMessage", style: const TextStyle(color: Colors.redAccent)),
+                                  const SizedBox(height: 12),
+                                  ElevatedButton(
+                                    onPressed: _fetchUsers,
+                                    child: const Text("Retry"),
+                                  )
+                                ],
+                              ),
+                            ),
+                          )
+                        else if (filteredUsers.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 40.0),
+                            child: Center(child: Text("No users found.", style: TextStyle(color: UserManagementScreen.secondaryText))),
+                          )
+                        else
+                          _buildUserListView(filteredUsers),
+                        const SizedBox(height: 24),
+                        if (_isLoading && _users.isNotEmpty) _buildLoadingIndicator(),
+                        const SizedBox(height: 80),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -70,11 +253,17 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       floatingActionButton: _showCreateModal || _showDetailDialog
           ? null
           : FloatingActionButton(
-        onPressed: () => setState(() => _showCreateModal = true),
-        backgroundColor: UserManagementScreen.primaryBlue,
-        shape: const CircleBorder(),
-        child: const Icon(Icons.person_add_alt_1_outlined, color: Colors.white, size: 24),
-      ),
+              onPressed: () => setState(() {
+                _usernameController.clear();
+                _emailController.clear();
+                _passwordController.clear();
+                _selectedRole = "user";
+                _showCreateModal = true;
+              }),
+              backgroundColor: UserManagementScreen.primaryBlue,
+              shape: const CircleBorder(),
+              child: const Icon(Icons.person_add_alt_1_outlined, color: Colors.white, size: 24),
+            ),
     );
   }
 
@@ -107,8 +296,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey.shade200),
       ),
-      child: const TextField(
-        decoration: InputDecoration(
+      child: TextField(
+        onChanged: (val) {
+          setState(() {
+            _searchQuery = val;
+          });
+        },
+        decoration: const InputDecoration(
           hintText: "Search by username, ID or email...",
           hintStyle: TextStyle(color: UserManagementScreen.secondaryText, fontSize: 14),
           prefixIcon: Icon(Icons.search, color: UserManagementScreen.secondaryText, size: 20),
@@ -120,42 +314,38 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   Widget _buildFilterChipsRow() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: UserFilterTab.values.map((tab) {
-          final isSelected = _selectedFilter == tab;
-          String label = "All Users";
-          if (tab == UserFilterTab.admins) label = "Admins";
-          if (tab == UserFilterTab.moderators) label = "Moderators";
-          if (tab == UserFilterTab.online) label = "Online";
+    return Row(
+      children: UserFilterTab.values.map((tab) {
+        final isSelected = _selectedFilter == tab;
+        String label = "All Users";
+        if (tab == UserFilterTab.admins) label = "Admins";
+        if (tab == UserFilterTab.users) label = "Users";
 
-          return Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: ChoiceChip(
-              label: Text(label),
-              selected: isSelected,
-              onSelected: (val) => setState(() => _selectedFilter = tab),
-              selectedColor: UserManagementScreen.primaryBlue,
-              backgroundColor: Colors.white,
-              labelStyle: TextStyle(
-                color: isSelected ? Colors.white : UserManagementScreen.darkText,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                fontSize: 13,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-                side: BorderSide(color: isSelected ? Colors.transparent : Colors.grey.shade200),
-              ),
-              showCheckmark: false,
+        return Padding(
+          padding: const EdgeInsets.only(right: 8.0),
+          child: ChoiceChip(
+            label: Text(label),
+            selected: isSelected,
+            onSelected: (val) => setState(() => _selectedFilter = tab),
+            selectedColor: UserManagementScreen.primaryBlue,
+            backgroundColor: Colors.white,
+            labelStyle: TextStyle(
+              color: isSelected ? Colors.white : UserManagementScreen.darkText,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              fontSize: 13,
             ),
-          );
-        }).toList(),
-      ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: BorderSide(color: isSelected ? Colors.transparent : Colors.grey.shade200),
+            ),
+            showCheckmark: false,
+          ),
+        );
+      }).toList(),
     );
   }
 
-  Widget _buildSortAndResultsHeader() {
+  Widget _buildSortAndResultsHeader(int count) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -164,7 +354,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             style: const TextStyle(color: UserManagementScreen.darkText, fontSize: 14, fontWeight: FontWeight.bold),
             children: [
               const TextSpan(text: "Total Results "),
-              TextSpan(text: "(${_users.length * 10 + 2})", style: const TextStyle(color: UserManagementScreen.primaryBlue)),
+              TextSpan(text: "($count)", style: const TextStyle(color: UserManagementScreen.primaryBlue)),
             ],
           ),
         ),
@@ -179,21 +369,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     );
   }
 
-  Widget _buildUserListView() {
+  Widget _buildUserListView(List<ApiUserModel> usersList) {
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: _users.length,
+      itemCount: usersList.length,
       separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
-        final item = _users[index];
-        Color statusColor = Colors.grey;
-        if (item["status"] == "online") statusColor = Colors.green;
-        if (item["status"] == "away") statusColor = Colors.orange;
-
-        Color roleColor = UserManagementScreen.primaryBlue;
-        if (item["role"] == "Moderator") roleColor = Colors.purpleAccent;
-        if (item["role"] == "User") roleColor = Colors.green;
+        final item = usersList[index];
+        final bool isAdmin = item.role.toLowerCase() == 'admin';
+        final Color roleColor = isAdmin ? UserManagementScreen.primaryBlue : Colors.green;
 
         return GestureDetector(
           onTap: () => setState(() {
@@ -214,10 +399,14 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     Container(
                       width: 48,
                       height: 48,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         image: DecorationImage(
-                          image: NetworkImage("https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=100"),
+                          image: NetworkImage(
+                            isAdmin
+                                ? "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200"
+                                : "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200",
+                          ),
                           fit: BoxFit.cover,
                         ),
                       ),
@@ -229,7 +418,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         width: 12,
                         height: 12,
                         decoration: BoxDecoration(
-                          color: statusColor,
+                          color: Colors.green,
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 2),
                         ),
@@ -244,25 +433,32 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     children: [
                       Row(
                         children: [
-                          Text(item["username"]!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: UserManagementScreen.darkText)),
+                          Expanded(
+                            child: Text(
+                              item.username,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: UserManagementScreen.darkText),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                           const SizedBox(width: 6),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(color: roleColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
-                            child: Text(item["role"]!, style: TextStyle(color: roleColor, fontSize: 9, fontWeight: FontWeight.bold)),
+                            child: Text(item.role.toUpperCase(), style: TextStyle(color: roleColor, fontSize: 9, fontWeight: FontWeight.bold)),
                           ),
                         ],
                       ),
                       const SizedBox(height: 2),
-                      Text("ID: ${item["id"]!}", style: const TextStyle(color: UserManagementScreen.secondaryText, fontSize: 12)),
+                      Text("ID: USR-${item.userId}", style: const TextStyle(color: UserManagementScreen.secondaryText, fontSize: 12)),
                       const SizedBox(height: 2),
-                      Text(item["email"]!, style: const TextStyle(color: UserManagementScreen.secondaryText, fontSize: 12)),
+                      Text(item.email, style: const TextStyle(color: UserManagementScreen.secondaryText, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
                     ],
                   ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 22),
-                  onPressed: () {},
+                  onPressed: () => _deleteUser(item.userId),
                 ),
               ],
             ),
@@ -276,7 +472,6 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     return Center(
       child: Column(
         children: [
-          // FIXED: Removed const from parent container list as Indicator has no const constructor 👇
           const SizedBox(
             width: 24,
             height: 24,
@@ -290,6 +485,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   Widget _buildUserDetailDialog() {
+    final bool isAdmin = _activeUserData!.role.toLowerCase() == 'admin';
+
     return Container(
       color: Colors.black.withValues(alpha: 0.5),
       width: double.infinity,
@@ -309,9 +506,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     Container(
                       width: 56,
                       height: 56,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        image: DecorationImage(image: NetworkImage("https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=100"), fit: BoxFit.cover),
+                        image: DecorationImage(
+                          image: NetworkImage(
+                            isAdmin
+                                ? "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200"
+                                : "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200",
+                          ),
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
                     Positioned(
@@ -320,7 +524,6 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       child: Container(
                         width: 14,
                         height: 14,
-                        // FIXED: Replaced invalid const factory setup with standard definition 👇
                         decoration: BoxDecoration(
                           color: Colors.green,
                           shape: BoxShape.circle,
@@ -335,16 +538,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(_activeUserData!["username"]!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: UserManagementScreen.darkText)),
+                      Text(_activeUserData!.username, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: UserManagementScreen.darkText)),
                       const SizedBox(height: 2),
-                      Text("ID: ${_activeUserData!["id"]!}", style: const TextStyle(color: UserManagementScreen.secondaryText, fontSize: 13)),
+                      Text("ID: USR-${_activeUserData!.userId}", style: const TextStyle(color: UserManagementScreen.secondaryText, fontSize: 13)),
                     ],
                   ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(8)),
-                  child: Text(_activeUserData!["role"]!, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                  decoration: BoxDecoration(color: isAdmin ? UserManagementScreen.primaryBlue : Colors.green, borderRadius: BorderRadius.circular(8)),
+                  child: Text(_activeUserData!.role.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -353,7 +556,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               children: [
                 const Icon(Icons.email_outlined, size: 18, color: UserManagementScreen.secondaryText),
                 const SizedBox(width: 10),
-                Text(_activeUserData!["email"]!, style: const TextStyle(color: UserManagementScreen.darkText, fontSize: 14)),
+                Text(_activeUserData!.email, style: const TextStyle(color: UserManagementScreen.darkText, fontSize: 14)),
               ],
             ),
             const SizedBox(height: 24),
@@ -366,14 +569,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 Row(
                   children: [
                     OutlinedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.edit_outlined, size: 16),
-                      label: const Text("Edit", style: TextStyle(fontSize: 13)),
-                      style: OutlinedButton.styleFrom(side: BorderSide(color: Colors.grey.shade200), foregroundColor: UserManagementScreen.darkText, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                    ),
-                    const SizedBox(width: 8),
-                    OutlinedButton.icon(
-                      onPressed: () => setState(() => _showDetailDialog = false),
+                      onPressed: () => _deleteUser(_activeUserData!.userId),
                       icon: const Icon(Icons.delete_outline, size: 16),
                       label: const Text("Delete", style: TextStyle(fontSize: 13)),
                       style: OutlinedButton.styleFrom(side: BorderSide(color: Colors.grey.shade200), foregroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
@@ -402,75 +598,103 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       child: Container(
         padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
         decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          // FIXED: Removed invalid const array flag due to dynamic non-const text inputs 👇
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const SizedBox(width: 24),
-                const Text("Create New User", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: UserManagementScreen.primaryBlue)),
-                GestureDetector(onTap: () => setState(() => _showCreateModal = false), child: const Icon(Icons.close, color: UserManagementScreen.darkText)),
-              ],
-            ),
-            const SizedBox(height: 6),
-            const Text("Onboard a new analyst or administrator to the AI system.", style: TextStyle(color: UserManagementScreen.secondaryText, fontSize: 13)),
-            const SizedBox(height: 24),
-
-            const Text("Full Name", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: UserManagementScreen.darkText)),
-            const SizedBox(height: 8),
-            TextField(
-              decoration: InputDecoration(
-                hintText: "e.g. John Doe",
-                prefixIcon: const Icon(Icons.person_outline, size: 20),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const SizedBox(width: 24),
+                  const Text("Create New User", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: UserManagementScreen.primaryBlue)),
+                  GestureDetector(onTap: () => setState(() => _showCreateModal = false), child: const Icon(Icons.close, color: UserManagementScreen.darkText)),
+                ],
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 6),
+              const Text("Onboard a new analyst or administrator to the AI system.", style: TextStyle(color: UserManagementScreen.secondaryText, fontSize: 13)),
+              const SizedBox(height: 24),
 
-            const Text("Email Address", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: UserManagementScreen.darkText)),
-            const SizedBox(height: 8),
-            TextField(
-              decoration: InputDecoration(
-                hintText: "john@ranklens.ai",
-                prefixIcon: const Icon(Icons.email_outlined, size: 20),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+              const Text("Username", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: UserManagementScreen.darkText)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _usernameController,
+                decoration: InputDecoration(
+                  hintText: "e.g. johndoe",
+                  prefixIcon: const Icon(Icons.person_outline, size: 20),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            const Text("Account Role", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: UserManagementScreen.darkText)),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(child: _buildRoleSelectorCard("Admin", "Full access", true)),
-                const SizedBox(width: 16),
-                Expanded(child: _buildRoleSelectorCard("User", "Analysis only", false)),
-              ],
-            ),
-            const SizedBox(height: 32),
+              const Text("Email Address", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: UserManagementScreen.darkText)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  hintText: "john@ranklens-ai.com",
+                  prefixIcon: const Icon(Icons.email_outlined, size: 20),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                ),
+              ),
+              const SizedBox(height: 16),
 
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
-                onPressed: () => setState(() => _showCreateModal = false),
-                style: ElevatedButton.styleFrom(backgroundColor: UserManagementScreen.primaryBlue, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0),
-                child: const Text("Confirm & Create Account", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const Text("Password", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: UserManagementScreen.darkText)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _passwordController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  hintText: "••••••••",
+                  prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Center(
-              child: GestureDetector(
-                onTap: () => setState(() => _showCreateModal = false),
-                child: const Text("Cancel", style: TextStyle(color: UserManagementScreen.secondaryText, fontSize: 14, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 16),
+
+              const Text("Account Role", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: UserManagementScreen.darkText)),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedRole = "admin"),
+                      child: _buildRoleSelectorCard("Admin", "Full access", _selectedRole == "admin"),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedRole = "user"),
+                      child: _buildRoleSelectorCard("User", "Analysis only", _selectedRole == "user"),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 32),
+
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: _createUser,
+                  style: ElevatedButton.styleFrom(backgroundColor: UserManagementScreen.primaryBlue, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0),
+                  child: const Text("Confirm & Create Account", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: GestureDetector(
+                  onTap: () => setState(() => _showCreateModal = false),
+                  child: const Text("Cancel", style: TextStyle(color: UserManagementScreen.secondaryText, fontSize: 14, fontWeight: FontWeight.w500)),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -488,13 +712,15 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         children: [
           Icon(title == "Admin" ? Icons.verified_user_outlined : Icons.person_outline, color: isSelected ? UserManagementScreen.primaryBlue : UserManagementScreen.secondaryText),
           const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: UserManagementScreen.darkText)),
-              const SizedBox(height: 2),
-              Text(desc, style: const TextStyle(color: UserManagementScreen.secondaryText, fontSize: 11)),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: UserManagementScreen.darkText)),
+                const SizedBox(height: 2),
+                Text(desc, style: const TextStyle(color: UserManagementScreen.secondaryText, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
+              ],
+            ),
           )
         ],
       ),
