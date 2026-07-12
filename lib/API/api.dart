@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import 'package:mo/features/mock_data/login-mock-data.dart';
 
 class ApiService {
@@ -435,6 +436,19 @@ class ApiService {
       throw Exception('Server returned status code: ${response.statusCode}');
     }
   }
+
+  static Future<List<LeaderboardModel>> getLeaderboards() async {
+    final url = Uri.parse('$baseUrl/api/leaderboard');
+    final response = await http.get(url, headers: headers);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final List<dynamic> items = data['items'] ?? [];
+      return items.map((item) => LeaderboardModel.fromJson(item)).toList();
+    } else {
+      throw Exception('Server returned status code: ${response.statusCode}');
+    }
+  }
 }
 
 class PlayerModel {
@@ -641,5 +655,88 @@ class ApiUserModel {
       email: json['email'] ?? '',
       role: json['role'] ?? 'user',
     );
+  }
+}
+
+class LeaderboardModel {
+  final int leaderboardId;
+  final String title;
+  final String eventName;
+  final String metricType;
+
+  LeaderboardModel({
+    required this.leaderboardId,
+    required this.title,
+    required this.eventName,
+    required this.metricType,
+  });
+
+  factory LeaderboardModel.fromJson(Map<String, dynamic> json) {
+    return LeaderboardModel(
+      leaderboardId: json['leaderboardId'] ?? 0,
+      title: json['title'] ?? '',
+      eventName: json['eventName'] ?? '',
+      metricType: json['metricType'] ?? '',
+    );
+  }
+}
+
+class LocalHistoryService {
+  static const String _fileName = 'analysis_history.json';
+
+  static Future<File> _getFile() async {
+    final dir = await getApplicationDocumentsDirectory();
+    return File('${dir.path}/$_fileName');
+  }
+
+  static Future<List<AnalysisResultModel>> getHistory() async {
+    try {
+      final file = await _getFile();
+      if (!await file.exists()) {
+        return [];
+      }
+      final contents = await file.readAsString();
+      final List<dynamic> jsonList = jsonDecode(contents);
+      return jsonList.map((item) => AnalysisResultModel.fromJson(item)).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  static Future<void> saveResult(AnalysisResultModel result) async {
+    try {
+      final file = await _getFile();
+      List<AnalysisResultModel> history = await getHistory();
+
+      final finalResult = AnalysisResultModel(
+        analysisId: result.analysisId == 0 ? DateTime.now().millisecondsSinceEpoch : result.analysisId,
+        imageUrl: result.imageUrl,
+        processedTime: result.processedTime,
+        gameName: result.gameName,
+        serverName: result.serverName,
+        eventName: result.eventName,
+        leaderboard: result.leaderboard,
+      );
+
+      history.insert(0, finalResult);
+
+      final jsonList = history.map((item) => {
+        'analysisId': item.analysisId,
+        'imageUrl': item.imageUrl,
+        'processedTime': item.processedTime,
+        'gameName': item.gameName,
+        'serverName': item.serverName,
+        'eventName': item.eventName,
+        'leaderboard': item.leaderboard.map((lb) => {
+          'rank': lb.rank,
+          'playerName': lb.playerName,
+          'score': lb.score,
+          'value': lb.value,
+          'guildName': lb.guildName,
+        }).toList(),
+      }).toList();
+
+      await file.writeAsString(jsonEncode(jsonList));
+    } catch (_) {}
   }
 }

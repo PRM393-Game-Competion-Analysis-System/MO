@@ -134,13 +134,15 @@ class _UploadAndAnalyzeScreenState extends State<UploadAndAnalyzeScreen> {
 
       final result = AnalysisResultModel(
         analysisId: 0,
-        imageUrl: '',
+        imageUrl: _pickedImage?.path ?? '',
         processedTime: DateTime.now().toIso8601String(),
         gameName: widget.game.title,
         serverName: _selectedServer,
         eventName: 'OCR Leaderboard',
         leaderboard: parsedLeaderboard,
       );
+
+      await LocalHistoryService.saveResult(result);
 
       if (mounted) {
         setState(() {
