@@ -17,20 +17,24 @@ class UserModel {
 
 // Định nghĩa cấu trúc thông tin một tựa Game
 class GameModel {
+  final int gameId;
   final String title;
   final String description;
   final String imageUrl;
   final String category;
   final String playersCount;
   final bool isPopular;
+  final String companyName;
 
   GameModel({
+    this.gameId = 0,
     required this.title,
     required this.description,
     required this.imageUrl,
     required this.category,
     required this.playersCount,
     this.isPopular = false,
+    this.companyName = '',
   });
 }
 

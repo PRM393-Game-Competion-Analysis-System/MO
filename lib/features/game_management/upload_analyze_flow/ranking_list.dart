@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:mo/API/api.dart';
 
 class RankingList extends StatelessWidget {
-  const RankingList({super.key});
+  final List<LeaderboardItem> leaderboard;
+
+  const RankingList({super.key, required this.leaderboard});
 
   static const Color primaryBlue = Color(0xFF1129A4);
   static const Color bgColor = Color(0xFFF8F9FA);
@@ -25,29 +28,54 @@ class RankingList extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 16),
-        _buildRankCard("ShadowWalker", "Apex Legends", "9,850", Colors.green, true),
-        const SizedBox(height: 12),
-        _buildRankCard("CrimsonViper", "Red Dragon Clan", "9,420", Colors.orange, false),
-        const SizedBox(height: 24),
-        SizedBox(
-          width: double.infinity,
-          height: 50,
-          child: OutlinedButton(
-            onPressed: () {},
-            style: OutlinedButton.styleFrom(side: BorderSide(color: Colors.grey.shade200), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-            child: const Text("Show All 12 Results", style: TextStyle(color: secondaryText, fontWeight: FontWeight.w600)),
-          ),
-        ),
+        if (leaderboard.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 40.0),
+            child: Center(
+              child: Text(
+                "No ranking records found in this screenshot.",
+                style: TextStyle(color: secondaryText, fontSize: 14),
+              ),
+            ),
+          )
+        else
+          ...leaderboard.map((item) {
+            final isTop1 = item.rank == 1;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: _buildRankCard(
+                item.playerName,
+                item.guildName.isNotEmpty ? item.guildName : "No Guild",
+                item.score.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => "${m[1]},"),
+                isTop1 ? Colors.amber : Colors.green,
+                isTop1,
+                item.rank,
+              ),
+            );
+          }),
       ],
     );
   }
 
-  Widget _buildRankCard(String name, String detail, String score, Color statusColor, bool isBlueShield) {
+  Widget _buildRankCard(String name, String detail, String score, Color statusColor, bool isBlueShield, int rank) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
       child: Row(
         children: [
+          Container(
+            alignment: Alignment.center,
+            width: 32,
+            child: Text(
+              "#$rank",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: rank == 1 ? Colors.amber : (rank <= 3 ? Colors.green : secondaryText),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
           Icon(Icons.verified_outlined, color: isBlueShield ? primaryBlue : Colors.grey, size: 28),
           const SizedBox(width: 12),
           Stack(

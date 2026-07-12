@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:mo/features/mock_data/login-mock-data.dart';
 import 'package:mo/features/cloud_sync/cloud_sync_screen.dart';
-import 'package:mo/features/game_management/upload_and_analyze_screen.dart'; // Imported the new screen
+import 'package:mo/features/game_management/upload_and_analyze_screen.dart';
+import 'package:mo/widgets/main_layout.dart';
+import 'package:mo/widgets/app_tab.dart';
 
-class GameSelectionScreen extends StatelessWidget {
+class GameSelectionScreen extends StatefulWidget {
   final UserModel user;
   final List<GameModel> games;
 
@@ -18,8 +20,34 @@ class GameSelectionScreen extends StatelessWidget {
   static const Color darkText = Color(0xFF1A1D20);
 
   @override
+  State<GameSelectionScreen> createState() => _GameSelectionScreenState();
+}
+
+class _GameSelectionScreenState extends State<GameSelectionScreen> {
+  int _selectedGameIndex = 0;
+  late final PageController _pageController;
+
+  static const Color primaryBlue = GameSelectionScreen.primaryBlue;
+  static const Color accentOrange = GameSelectionScreen.accentOrange;
+  static const Color darkText = GameSelectionScreen.darkText;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(viewportFraction: 0.88);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final featuredGame = games.isNotEmpty ? games.first : null;
+    final selectedGame = widget.games.isNotEmpty && _selectedGameIndex >= 0 && _selectedGameIndex < widget.games.length
+        ? widget.games[_selectedGameIndex]
+        : null;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -34,34 +62,69 @@ class GameSelectionScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildHeaderBanner(context, user),
+                        _buildHeaderBanner(context, widget.user),
                         const SizedBox(height: 20),
                         _buildFilterRow(),
                         const SizedBox(height: 20),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                          child: featuredGame != null
-                              ? _buildGameCard(featuredGame)
-                              : const Text("No games available"),
-                        ),
+                        widget.games.isNotEmpty
+                            ? SizedBox(
+                                height: 350,
+                                child: PageView.builder(
+                                  controller: _pageController,
+                                  itemCount: widget.games.length,
+                                  onPageChanged: (index) {
+                                    setState(() {
+                                      _selectedGameIndex = index;
+                                    });
+                                  },
+                                  itemBuilder: (context, index) {
+                                    final game = widget.games[index];
+                                    final isSelected = index == _selectedGameIndex;
+                                    return GestureDetector(
+                                      onTap: () {
+                                        _pageController.animateToPage(
+                                          index,
+                                          duration: const Duration(milliseconds: 300),
+                                          curve: Curves.easeInOut,
+                                        );
+                                      },
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                                        child: _buildGameCard(game, isSelected),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              )
+                            : const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 16.0),
+                                child: Text("No games available"),
+                              ),
                         const SizedBox(height: 16),
-                        const Center(
-                          child: Text(
-                            "● ● ●",
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 10,
-                              letterSpacing: 2,
+                        // Indicator dots
+                        if (widget.games.isNotEmpty)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: List.generate(
+                              widget.games.length,
+                              (index) => Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                                width: index == _selectedGameIndex ? 12 : 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: index == _selectedGameIndex ? primaryBlue : Colors.grey.shade300,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
                         const SizedBox(height: 20),
 
-                        // FIXED: Passed context safely down to the action bar handler 👇
+                        // Action bar (only the selected game's selected title and details)
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                          child: featuredGame != null
-                              ? _buildSelectedActionBar(context, featuredGame)
+                          child: selectedGame != null
+                              ? _buildSelectedActionBar(context, selectedGame)
                               : const SizedBox(),
                         ),
                         const SizedBox(height: 100),
@@ -119,10 +182,7 @@ class GameSelectionScreen extends StatelessWidget {
                   alignment: Alignment.topRight,
                   child: GestureDetector(
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const CloudSyncScreen()),
-                      );
+                      MainLayout.of(context)?.setTab(AppTab.cloudSync);
                     },
                     child: Icon(Icons.sync, color: Colors.blue.shade300, size: 22),
                   ),
@@ -223,7 +283,7 @@ class GameSelectionScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildGameCard(GameModel game) {
+  Widget _buildGameCard(GameModel game, bool isSelected) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -273,11 +333,12 @@ class GameSelectionScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-              const Positioned(
-                top: 12,
-                right: 12,
-                child: Icon(Icons.check_circle, color: Colors.white, size: 24),
-              ),
+              if (isSelected)
+                const Positioned(
+                  top: 12,
+                  right: 12,
+                  child: Icon(Icons.check_circle, color: Colors.white, size: 24),
+                ),
               Positioned(
                 bottom: 12,
                 left: 12,
@@ -389,7 +450,7 @@ class GameSelectionScreen extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const UploadAndAnalyzeScreen(),
+                  builder: (context) => UploadAndAnalyzeScreen(game: game),
                 ),
               );
             },

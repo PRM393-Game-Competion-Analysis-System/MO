@@ -20,6 +20,9 @@ class MainLayout extends StatefulWidget {
     required this.games,
   });
 
+  static _MainLayoutState? of(BuildContext context) =>
+      context.findAncestorStateOfType<_MainLayoutState>();
+
   @override
   State<MainLayout> createState() => _MainLayoutState();
 }
@@ -27,30 +30,41 @@ class MainLayout extends StatefulWidget {
 class _MainLayoutState extends State<MainLayout> {
   AppTab _currentTab = AppTab.home;
 
+  void setTab(AppTab tab) {
+    setState(() {
+      _currentTab = tab;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(
-        index: _currentTab.index,
-        children: [
-          GameSelectionScreen(
-            user: widget.user,
-            games: widget.games,
-          ),
-          const HistoryScreen(),
-          const DashboardScreen(),
-          const PlayerLookupScreen(),
-          const CloudSyncScreen(),
-          widget.user.isAdmin ? const AdminProfileScreen() : const ProfileScreen(),
-        ],
-      ),
-      bottomNavigationBar: CustomBottomNavBar(
-        currentTab: _currentTab,
-        onTabSelected: (AppTab selectedTab) {
-          setState(() {
-            _currentTab = selectedTab;
-          });
-        },
+    return PopScope(
+      canPop: _currentTab == AppTab.home,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        setTab(AppTab.home);
+      },
+      child: Scaffold(
+        body: IndexedStack(
+          index: _currentTab.index,
+          children: [
+            GameSelectionScreen(
+              user: widget.user,
+              games: widget.games,
+            ),
+            const HistoryScreen(),
+            const DashboardScreen(),
+            const PlayerLookupScreen(),
+            const CloudSyncScreen(),
+            widget.user.isAdmin ? const AdminProfileScreen() : const ProfileScreen(),
+          ],
+        ),
+        bottomNavigationBar: CustomBottomNavBar(
+          currentTab: _currentTab,
+          onTabSelected: (AppTab selectedTab) {
+            setTab(selectedTab);
+          },
+        ),
       ),
     );
   }

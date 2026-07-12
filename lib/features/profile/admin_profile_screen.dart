@@ -1,14 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:mo/API/api.dart';
 import 'package:mo/features/profile/my_profile_screen.dart';
 import 'package:mo/features/profile/activity_center_screen.dart';
+import 'package:mo/widgets/main_layout.dart';
+import 'package:mo/widgets/app_tab.dart';
+import 'package:mo/features/auth/welcome.dart';
 
-class AdminProfileScreen extends StatelessWidget {
+class AdminProfileScreen extends StatefulWidget {
   const AdminProfileScreen({super.key});
 
+  @override
+  State<AdminProfileScreen> createState() => _AdminProfileScreenState();
+}
+
+class _AdminProfileScreenState extends State<AdminProfileScreen> {
   static const Color primaryBlue = Color(0xFF1129A4);
   static const Color bgColor = Color(0xFFF8F9FA);
   static const Color darkText = Color(0xFF1A1D20);
   static const Color secondaryText = Color(0xFF6C757D);
+
+  late Future<ApiUserModel> _profileFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _profileFuture = ApiService.getUserProfile();
+  }
+
+  void _refreshProfile() {
+    setState(() {
+      _profileFuture = ApiService.getUserProfile();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +42,7 @@ class AdminProfileScreen extends StatelessWidget {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, color: darkText, size: 20),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => MainLayout.of(context)?.setTab(AppTab.home),
         ),
         title: const Text(
           "My Profile",
@@ -40,71 +63,98 @@ class AdminProfileScreen extends StatelessWidget {
           children: [
             const SizedBox(height: 10),
             // Admin Info Card
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const MyProfileScreen()),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.grey.shade100),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.02),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+            FutureBuilder<ApiUserModel>(
+              future: _profileFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Container(
+                    height: 98,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.grey.shade100),
                     ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        image: const DecorationImage(
-                          image: NetworkImage("https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200"),
-                          fit: BoxFit.cover,
+                    child: const CircularProgressIndicator(color: primaryBlue),
+                  );
+                }
+
+                final profile = snapshot.data;
+                final username = profile?.username ?? "Alex V.";
+                final email = profile?.email ?? "alex@gmail.com";
+                final role = profile?.role ?? "user";
+                final avatarUrl = role == 'admin'
+                    ? "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200"
+                    : "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200";
+
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const MyProfileScreen()),
+                    ).then((_) => _refreshProfile());
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.grey.shade100),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.02),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
-                      ),
+                      ],
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            image: DecorationImage(
+                              image: NetworkImage(avatarUrl),
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                "Alex V.",
-                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryBlue),
+                              Row(
+                                children: [
+                                  Text(
+                                    username,
+                                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryBlue),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  if (role == 'admin')
+                                    const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                              const SizedBox(height: 4),
+                              Text(
+                                email,
+                                style: const TextStyle(color: secondaryText, fontSize: 14),
+                              ),
                             ],
                           ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            "alex@gmail.com",
-                            style: TextStyle(color: secondaryText, fontSize: 14),
-                          ),
-                        ],
-                      ),
+                        ),
+                        Container(
+                          width: 1,
+                          height: 40,
+                          color: Colors.grey.shade200,
+                        ),
+                      ],
                     ),
-                    Container(
-                      width: 1,
-                      height: 40,
-                      color: Colors.grey.shade200,
-                    ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 20),
 
@@ -166,8 +216,6 @@ class AdminProfileScreen extends StatelessWidget {
                     );
                   }),
                   _buildMenuTile(Icons.vpn_key_outlined, "Password & Security"),
-                  _buildMenuTile(Icons.notifications_none_outlined, "Notifications"),
-                  _buildMenuTile(Icons.language_outlined, "Language", trailingText: "English"),
                   _buildMenuTile(Icons.dashboard_customize_outlined, "Activity Center", onTap: () {
                     Navigator.push(
                       context,
@@ -193,9 +241,19 @@ class AdminProfileScreen extends StatelessWidget {
               child: Column(
                 children: [
                   _buildMenuTile(Icons.info_outline, "About Us"),
-                  _buildMenuTile(Icons.dark_mode_outlined, "Theme", showSwitch: true),
-                  _buildMenuTile(Icons.calendar_today_outlined, "Appointment"),
-                  _buildMenuTile(Icons.logout_outlined, "Log Out", isDestructive: true),
+                  _buildMenuTile(
+                    Icons.logout_outlined,
+                    "Log Out",
+                    isDestructive: true,
+                    onTap: () {
+                      ApiService.logout(); // Clear session and user email
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (context) => const GameAnalyzeWelcomeScreen()),
+                        (route) => false,
+                      );
+                    },
+                  ),
                 ],
               ),
             ),

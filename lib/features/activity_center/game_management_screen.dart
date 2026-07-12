@@ -1,6 +1,8 @@
-import 'dart:io'; // Required for File manipulation
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart'; // Required for Local File Uploads
+import 'package:image_picker/image_picker.dart';
+import 'package:mo/API/api.dart';
+import 'package:mo/features/mock_data/login-mock-data.dart';
 
 class GameManagementScreen extends StatefulWidget {
   const GameManagementScreen({super.key});
@@ -18,56 +20,59 @@ class _GameManagementScreenState extends State<GameManagementScreen> {
   bool _showCreateModal = false;
   bool _showEditDialog = false;
   String _selectedCategoryFilter = "All";
+  String _searchQuery = "";
 
-  Map<String, String>? _activeGameData;
+  List<GameModel> _games = [];
+  bool _isLoading = true;
+  String _errorMessage = "";
+
+  GameModel? _activeGameData;
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
+  final TextEditingController _companyController = TextEditingController();
   String _selectedCategory = "RPG";
 
-  // Track selected local image path instead of a text URL controller
   String? _selectedLocalImagePath;
   final ImagePicker _imagePicker = ImagePicker();
 
-  final List<Map<String, String>> _games = [
-    {
-      "id": "GM-1021",
-      "title": "Genshin Impact",
-      "category": "RPG",
-      "playersCount": "12.4M",
-      "imageUrl": "https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=500",
-      "description": "An open-world action RPG with anime aesthetics and elemental magic systems."
-    },
-    {
-      "id": "GM-8842",
-      "title": "Apex Legends",
-      "category": "FPS",
-      "playersCount": "8.2M",
-      "imageUrl": "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=600",
-      "description": "A fast-paced heroic battle royale game focused on squad tactics and skills."
-    },
-    {
-      "id": "GM-7751",
-      "title": "League of Legends",
-      "category": "MOBA",
-      "playersCount": "32.1M",
-      "imageUrl": "https://images.unsplash.com/photo-1560253023-3ec5d502959f?q=80&w=500",
-      "description": "The definitive strategic multiplayer online battle arena team combat game."
-    }
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _fetchGames();
+  }
 
   @override
   void dispose() {
     _titleController.dispose();
     _descController.dispose();
+    _companyController.dispose();
     super.dispose();
   }
 
-  // Native Photo Gallery Picker Integration 🎯
+  Future<void> _fetchGames() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = "";
+    });
+    try {
+      final games = await ApiService.getGames();
+      setState(() {
+        _games = games;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString().replaceAll("Exception: ", "");
+        _isLoading = false;
+      });
+    }
+  }
+
   Future<void> _pickLocalImageFile() async {
     final XFile? pickedFile = await _imagePicker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 85, // Optimized compression
+      imageQuality: 85,
     );
     if (pickedFile != null) {
       setState(() {
@@ -76,21 +81,158 @@ class _GameManagementScreenState extends State<GameManagementScreen> {
     }
   }
 
-  void _prepareEditForm(Map<String, String> game) {
-    _titleController.text = game["title"]!;
-    _descController.text = game["description"]!;
-    _selectedLocalImagePath = game["imageUrl"]!;
-    _selectedCategory = game["category"]!;
+  void _prepareEditForm(GameModel game) {
+    _titleController.text = game.title;
+    _descController.text = game.description;
+    _companyController.text = game.companyName;
+    _selectedLocalImagePath = game.imageUrl;
+    _selectedCategory = game.category;
   }
 
   void _clearForm() {
     _titleController.clear();
     _descController.clear();
+    _companyController.clear();
     _selectedLocalImagePath = null;
     _selectedCategory = "RPG";
   }
 
-  // Dynamic Image Renderer Helper (Handles both web URLs and local device files safely) 🎯
+  Future<void> _createGame() async {
+    final title = _titleController.text.trim();
+    final company = _companyController.text.trim();
+    final category = _selectedCategory;
+
+    if (title.isEmpty || company.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Title and Publisher cannot be empty.")),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _showCreateModal = false;
+    });
+
+    try {
+      await ApiService.createGame(title, category, company);
+      _fetchGames();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Game registered successfully!")),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to register game: $e")),
+        );
+      }
+    }
+  }
+
+  Future<void> _updateGame() async {
+    final title = _titleController.text.trim();
+    final company = _companyController.text.trim();
+    final category = _selectedCategory;
+
+    if (title.isEmpty || company.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Title and Publisher cannot be empty.")),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _showEditDialog = false;
+    });
+
+    try {
+      await ApiService.updateGame(_activeGameData!.gameId, title, category, company);
+      _fetchGames();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Game configuration updated successfully!")),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to update game: $e")),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteGame(GameModel game) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Delete Game"),
+        content: Text("Are you sure you want to delete '${game.title}'?"),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+            child: const Text("Delete"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await ApiService.deleteGame(game.gameId);
+      _fetchGames();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Game deleted successfully!")),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to delete game: $e")),
+        );
+      }
+    }
+  }
+
+  List<GameModel> _getFilteredGames() {
+    return _games.where((game) {
+      if (_searchQuery.isNotEmpty) {
+        final query = _searchQuery.toLowerCase();
+        final matchesTitle = game.title.toLowerCase().contains(query);
+        final matchesCompany = game.companyName.toLowerCase().contains(query);
+        if (!matchesTitle && !matchesCompany) {
+          return false;
+        }
+      }
+
+      if (_selectedCategoryFilter != "All") {
+        return game.category.toUpperCase() == _selectedCategoryFilter.toUpperCase();
+      }
+
+      return true;
+    }).toList();
+  }
+
   Widget _buildGameImageWidget(String imagePath, {required double width, required double height}) {
     if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
       return Image.network(
@@ -113,6 +255,8 @@ class _GameManagementScreenState extends State<GameManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final filteredGames = _getFilteredGames();
+
     return Scaffold(
       backgroundColor: GameManagementScreen.bgColor,
       appBar: _buildAppBar(),
@@ -121,20 +265,52 @@ class _GameManagementScreenState extends State<GameManagementScreen> {
           Column(
             children: [
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildSearchBar(),
-                      const SizedBox(height: 16),
-                      _buildFilterChipsRow(),
-                      const SizedBox(height: 20),
-                      _buildResultsHeader(),
-                      const SizedBox(height: 12),
-                      _buildGameListView(),
-                      const SizedBox(height: 80),
-                    ],
+                child: RefreshIndicator(
+                  onRefresh: _fetchGames,
+                  color: GameManagementScreen.primaryBlue,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildSearchBar(),
+                        const SizedBox(height: 16),
+                        _buildFilterChipsRow(),
+                        const SizedBox(height: 20),
+                        _buildResultsHeader(filteredGames.length),
+                        const SizedBox(height: 12),
+                        if (_isLoading && _games.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 40.0),
+                            child: Center(child: CircularProgressIndicator(color: GameManagementScreen.primaryBlue)),
+                          )
+                        else if (_errorMessage.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 40.0),
+                            child: Center(
+                              child: Column(
+                                children: [
+                                  Text("Error: $_errorMessage", style: const TextStyle(color: Colors.redAccent)),
+                                  const SizedBox(height: 12),
+                                  ElevatedButton(
+                                    onPressed: _fetchGames,
+                                    child: const Text("Retry"),
+                                  )
+                                ],
+                              ),
+                            ),
+                          )
+                        else if (filteredGames.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 40.0),
+                            child: Center(child: Text("No games found.", style: TextStyle(color: GameManagementScreen.secondaryText))),
+                          )
+                        else
+                          _buildGameListView(filteredGames),
+                        const SizedBox(height: 80),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -151,14 +327,14 @@ class _GameManagementScreenState extends State<GameManagementScreen> {
       floatingActionButton: _showCreateModal || _showEditDialog
           ? null
           : FloatingActionButton(
-        onPressed: () {
-          _clearForm();
-          setState(() => _showCreateModal = true);
-        },
-        backgroundColor: GameManagementScreen.primaryBlue,
-        shape: const CircleBorder(),
-        child: const Icon(Icons.add_moderator_outlined, color: Colors.white, size: 24),
-      ),
+              onPressed: () {
+                _clearForm();
+                setState(() => _showCreateModal = true);
+              },
+              backgroundColor: GameManagementScreen.primaryBlue,
+              shape: const CircleBorder(),
+              child: const Icon(Icons.add_moderator_outlined, color: Colors.white, size: 24),
+            ),
     );
   }
 
@@ -185,9 +361,14 @@ class _GameManagementScreenState extends State<GameManagementScreen> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey.shade200),
       ),
-      child: const TextField(
-        decoration: InputDecoration(
-          hintText: "Search active titles, genre tags or identifiers...",
+      child: TextField(
+        onChanged: (val) {
+          setState(() {
+            _searchQuery = val;
+          });
+        },
+        decoration: const InputDecoration(
+          hintText: "Search active titles, genre tags or publishers...",
           hintStyle: TextStyle(color: GameManagementScreen.secondaryText, fontSize: 14),
           prefixIcon: Icon(Icons.search, color: GameManagementScreen.secondaryText, size: 20),
           border: InputBorder.none,
@@ -229,7 +410,7 @@ class _GameManagementScreenState extends State<GameManagementScreen> {
     );
   }
 
-  Widget _buildResultsHeader() {
+  Widget _buildResultsHeader(int count) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -238,7 +419,7 @@ class _GameManagementScreenState extends State<GameManagementScreen> {
             style: const TextStyle(color: GameManagementScreen.darkText, fontSize: 14, fontWeight: FontWeight.bold),
             children: [
               const TextSpan(text: "Total Games "),
-              TextSpan(text: "(${_games.length})", style: const TextStyle(color: GameManagementScreen.primaryBlue)),
+              TextSpan(text: "($count)", style: const TextStyle(color: GameManagementScreen.primaryBlue)),
             ],
           ),
         ),
@@ -246,18 +427,14 @@ class _GameManagementScreenState extends State<GameManagementScreen> {
     );
   }
 
-  Widget _buildGameListView() {
-    final filteredGames = _selectedCategoryFilter == "All"
-        ? _games
-        : _games.where((g) => g["category"] == _selectedCategoryFilter).toList();
-
+  Widget _buildGameListView(List<GameModel> gamesList) {
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: filteredGames.length,
+      itemCount: gamesList.length,
       separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
-        final item = filteredGames[index];
+        final item = gamesList[index];
 
         return Container(
           padding: const EdgeInsets.all(12),
@@ -270,8 +447,7 @@ class _GameManagementScreenState extends State<GameManagementScreen> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(14),
-                // Optimized list view rendering using dynamic handler
-                child: _buildGameImageWidget(item["imageUrl"]!, width: 64, height: 64),
+                child: _buildGameImageWidget(item.imageUrl, width: 64, height: 64),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -282,7 +458,7 @@ class _GameManagementScreenState extends State<GameManagementScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            item["title"]!,
+                            item.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: GameManagementScreen.darkText),
@@ -292,14 +468,14 @@ class _GameManagementScreenState extends State<GameManagementScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                           decoration: BoxDecoration(color: const Color(0xFFEEF2FF), borderRadius: BorderRadius.circular(6)),
-                          child: Text(item["category"]!, style: const TextStyle(color: GameManagementScreen.primaryBlue, fontSize: 9, fontWeight: FontWeight.bold)),
+                          child: Text(item.category, style: const TextStyle(color: GameManagementScreen.primaryBlue, fontSize: 9, fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text(item["description"]!, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: GameManagementScreen.secondaryText, fontSize: 12)),
+                    Text(item.description, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: GameManagementScreen.secondaryText, fontSize: 12)),
                     const SizedBox(height: 2),
-                    Text("Pool: ${item["playersCount"]!} active profiles", style: TextStyle(color: GameManagementScreen.primaryBlue.withValues(alpha: 0.8), fontSize: 11, fontWeight: FontWeight.w500)),
+                    Text("Publisher: ${item.companyName}", style: TextStyle(color: GameManagementScreen.primaryBlue.withValues(alpha: 0.8), fontSize: 11, fontWeight: FontWeight.w500)),
                   ],
                 ),
               ),
@@ -315,7 +491,7 @@ class _GameManagementScreenState extends State<GameManagementScreen> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 22),
-                    onPressed: () => setState(() => _games.remove(item)),
+                    onPressed: () => _deleteGame(item),
                   ),
                 ],
               )
@@ -347,7 +523,6 @@ class _GameManagementScreenState extends State<GameManagementScreen> {
               const Text("Display Showcase Cover (Tap image to browse gallery)", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: GameManagementScreen.secondaryText)),
               const SizedBox(height: 6),
 
-              // Optimized tap container with integrated native image picking logic 📸
               GestureDetector(
                 onTap: _pickLocalImageFile,
                 child: ClipRRect(
@@ -386,12 +561,21 @@ class _GameManagementScreenState extends State<GameManagementScreen> {
               ),
               const SizedBox(height: 16),
 
-              const Text("Core Genre Description Log", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: GameManagementScreen.darkText)),
+              const Text("Publisher / Company", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: GameManagementScreen.darkText)),
               const SizedBox(height: 6),
               TextField(
-                controller: _descController,
-                maxLines: 2,
+                controller: _companyController,
                 decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+              ),
+              const SizedBox(height: 16),
+
+              const Text("Category Genre", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: GameManagementScreen.darkText)),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: _selectedCategory,
+                decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                items: ["RPG", "FPS", "MOBA"].map((cat) => DropdownMenuItem(value: cat, child: Text(cat))).toList(),
+                onChanged: (val) => setState(() => _selectedCategory = val!),
               ),
               const SizedBox(height: 24),
 
@@ -407,16 +591,7 @@ class _GameManagementScreenState extends State<GameManagementScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          _activeGameData!["title"] = _titleController.text;
-                          _activeGameData!["description"] = _descController.text;
-                          if (_selectedLocalImagePath != null) {
-                            _activeGameData!["imageUrl"] = _selectedLocalImagePath!;
-                          }
-                          _showEditDialog = false;
-                        });
-                      },
+                      onPressed: _updateGame,
                       style: ElevatedButton.styleFrom(backgroundColor: GameManagementScreen.primaryBlue, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                       child: const Text("Save Edits"),
                     ),
@@ -465,6 +640,17 @@ class _GameManagementScreenState extends State<GameManagementScreen> {
               ),
               const SizedBox(height: 16),
 
+              const Text("Publisher / Company", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: GameManagementScreen.darkText)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _companyController,
+                decoration: InputDecoration(
+                  hintText: "e.g. Riot Games, CD Projekt...",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 16),
+
               const Text("Category Genre", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: GameManagementScreen.darkText)),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
@@ -478,7 +664,6 @@ class _GameManagementScreenState extends State<GameManagementScreen> {
               const Text("Cover Configuration File", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: GameManagementScreen.darkText)),
               const SizedBox(height: 8),
 
-              // Local file picker container button instead of an un-intuitive URL string field 🎯
               OutlinedButton.icon(
                 onPressed: _pickLocalImageFile,
                 icon: Icon(Icons.upload_file_outlined, color: _selectedLocalImagePath != null ? Colors.green : GameManagementScreen.primaryBlue),
@@ -499,39 +684,13 @@ class _GameManagementScreenState extends State<GameManagementScreen> {
                   child: Image.file(File(_selectedLocalImagePath!), height: 80, width: double.infinity, fit: BoxFit.cover),
                 ),
               ],
-              const SizedBox(height: 16),
-
-              const Text("Strategic Overview Description", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: GameManagementScreen.darkText)),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _descController,
-                maxLines: 2,
-                decoration: InputDecoration(
-                  hintText: "Brief summary of core mechanics and metrics tracking rules...",
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
               const SizedBox(height: 32),
 
               SizedBox(
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: () {
-                    if (_titleController.text.isNotEmpty) {
-                      setState(() {
-                        _games.add({
-                          "id": "GM-${_games.length * 13 + 1200}",
-                          "title": _titleController.text,
-                          "category": _selectedCategory,
-                          "playersCount": "1.0M",
-                          "imageUrl": _selectedLocalImagePath ?? "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=500",
-                          "description": _descController.text.isEmpty ? "No descriptive overview provided yet." : _descController.text
-                        });
-                        _showCreateModal = false;
-                      });
-                    }
-                  },
+                  onPressed: _createGame,
                   style: ElevatedButton.styleFrom(backgroundColor: GameManagementScreen.primaryBlue, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0),
                   child: const Text("Confirm & Register Game Title", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),

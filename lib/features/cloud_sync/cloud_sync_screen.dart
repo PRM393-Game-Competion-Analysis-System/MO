@@ -1,12 +1,237 @@
 import 'package:flutter/material.dart';
+import 'package:mo/widgets/main_layout.dart';
+import 'package:mo/widgets/app_tab.dart';
+import 'package:mo/API/api.dart';
 
-class CloudSyncScreen extends StatelessWidget {
+class CloudSyncScreen extends StatefulWidget {
   const CloudSyncScreen({super.key});
 
+  @override
+  State<CloudSyncScreen> createState() => _CloudSyncScreenState();
+}
+
+class _CloudSyncScreenState extends State<CloudSyncScreen> {
   static const Color primaryBlue = Color(0xFF1129A4);
   static const Color bgColor = Color(0xFFF8F9FA);
   static const Color darkText = Color(0xFF1A1D20);
   static const Color secondaryText = Color(0xFF6C757D);
+
+  bool _isAnalyzing = false;
+
+  Future<void> _handleAutomaticAnalyze() async {
+    setState(() {
+      _isAnalyzing = true;
+    });
+
+    try {
+      // Gọi API phân tích tự động
+      final result = await ApiService.analyzeAutomatic(gameId: 0);
+      
+      // Lưu vào lịch sử local để người dùng có thể xem lại sau
+      await LocalHistoryService.saveResult(result);
+
+      if (!mounted) return;
+
+      // Hiển thị kết quả ngay lập tức bằng Modal
+      _showResultModal(result);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Phân tích hoàn tất và đã lưu vào lịch sử!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isAnalyzing = false;
+        });
+      }
+    }
+  }
+
+  // Hàm helper để parse dữ liệu từ chuỗi eventName nếu leaderboard bị trống (giống Dashboard)
+  List<LeaderboardItem> _parseLeaderboardFromText(String text) {
+    final List<LeaderboardItem> items = [];
+    final regExp = RegExp(
+      r'\{\s*"Hạng"\s*:\s*(\d+|"[^"]*")\s*,\s*"Tên"\s*:\s*"([^"]*)"\s*,\s*"Bang Hội"\s*:\s*"([^"]*)"\s*,\s*"Lực Chiến"\s*:\s*"([^"]*)"\s*\}',
+      caseSensitive: false,
+    );
+
+    final matches = regExp.allMatches(text);
+    for (final match in matches) {
+      try {
+        final rawRank = match.group(1)?.replaceAll('"', '') ?? '0';
+        final rank = int.tryParse(rawRank) ?? 0;
+        final name = match.group(2) ?? 'Unknown';
+        final guild = match.group(3) ?? '';
+        final rawPower = match.group(4) ?? '0';
+        final power = int.tryParse(rawPower) ?? 0;
+
+        items.add(LeaderboardItem(
+          rank: rank,
+          playerName: name,
+          guildName: guild.isEmpty ? 'Không Bang' : guild,
+          score: power,
+          value: power,
+        ));
+      } catch (_) {}
+    }
+    return items;
+  }
+
+  void _showResultModal(AnalysisResultModel result) {
+    // Nếu leaderboard trả về trống, ta thử parse từ eventName (chuỗi JSON thô từ OCR)
+    List<LeaderboardItem> displayList = result.leaderboard;
+    if (displayList.isEmpty && result.eventName.isNotEmpty) {
+      displayList = _parseLeaderboardFromText(result.eventName);
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.8,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  const Icon(Icons.auto_awesome, color: primaryBlue, size: 28),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          result.gameName,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: darkText),
+                        ),
+                        Text(
+                          "Phân tích hoàn tất lúc ${result.processedTime.split('T').last.substring(0, 5)}",
+                          style: const TextStyle(color: secondaryText, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close, color: secondaryText),
+                  )
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            // Hiển thị ảnh đã phân tích
+            if (result.imageUrl.isNotEmpty)
+              Container(
+                height: 180,
+                width: double.infinity,
+                margin: const EdgeInsets.symmetric(horizontal: 24),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  image: DecorationImage(
+                    image: NetworkImage(result.imageUrl),
+                    fit: BoxFit.cover,
+                  ),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))
+                  ],
+                ),
+              ),
+            const SizedBox(height: 24),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  Text("KẾT QUẢ PHÂN TÍCH", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: secondaryText, letterSpacing: 1.1)),
+                  Spacer(),
+                  Icon(Icons.sort, size: 16, color: secondaryText),
+                  SizedBox(width: 4),
+                  Text("Theo Hạng", style: TextStyle(fontSize: 12, color: secondaryText)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: displayList.isEmpty
+                  ? const Center(child: Text("Không tìm thấy dữ liệu bảng xếp hạng trong ảnh.", style: TextStyle(color: secondaryText)))
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      itemCount: displayList.length,
+                      itemBuilder: (context, index) {
+                        final item = displayList[index];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8F9FA),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.grey.shade100),
+                          ),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 18,
+                                backgroundColor: index < 3 ? primaryBlue : Colors.white,
+                                child: Text(
+                                  item.rank.toString(),
+                                  style: TextStyle(
+                                    color: index < 3 ? Colors.white : darkText,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(item.playerName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: darkText)),
+                                    Text(item.guildName, style: const TextStyle(color: secondaryText, fontSize: 12)),
+                                  ],
+                                ),
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    item.score.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => "${m[1]},"),
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: primaryBlue),
+                                  ),
+                                  const Text("Lực chiến", style: TextStyle(color: secondaryText, fontSize: 10)),
+                                ],
+                              )
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +242,7 @@ class CloudSyncScreen extends StatelessWidget {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, color: darkText, size: 20),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => MainLayout.of(context)?.setTab(AppTab.home),
         ),
         title: const Text(
           "Cloud Sync",
@@ -112,7 +337,7 @@ class CloudSyncScreen extends StatelessWidget {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: () {},
+                onPressed: _isAnalyzing ? null : _handleAutomaticAnalyze,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryBlue,
                   foregroundColor: Colors.white,
@@ -121,17 +346,23 @@ class CloudSyncScreen extends StatelessWidget {
                   ),
                   elevation: 0,
                 ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.play_arrow_rounded, size: 28),
-                    SizedBox(width: 8),
-                    Text(
-                      "Analyze Latest Sync",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
+                child: _isAnalyzing
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                    : const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.play_arrow_rounded, size: 28),
+                          SizedBox(width: 8),
+                          Text(
+                            "Analyze Latest Sync",
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
               ),
             ),
             const SizedBox(height: 16),
@@ -147,55 +378,8 @@ class CloudSyncScreen extends StatelessWidget {
             ),
             const SizedBox(height: 32),
 
-            // Cloud Screenshots Section
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Cloud Screenshots",
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: darkText,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text(
-                    "4 Total",
-                    style: TextStyle(fontSize: 12, color: secondaryText),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
 
-            // Screenshots Grid
-            Row(
-              children: [
-                Expanded(
-                  child: _buildScreenshotCard(
-                    "Elden Ring",
-                    "Synced 2 mins ago",
-                    "https://images.unsplash.com/photo-1612287230202-1ff1d85d1bdf?q=80&w=500",
-                    isNew: true,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildScreenshotCard(
-                    "Cyberpunk 2077",
-                    "Synced 15 mins ago",
-                    "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=500",
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
+
 
             // Bottom Info Card
             Container(
@@ -226,7 +410,6 @@ class CloudSyncScreen extends StatelessWidget {
         shape: const CircleBorder(),
         child: const Icon(Icons.refresh, color: Colors.white),
       ),
-      // REMOVED: bottomNavigationBar property is now entirely handled by MainLayout globally!
     );
   }
 

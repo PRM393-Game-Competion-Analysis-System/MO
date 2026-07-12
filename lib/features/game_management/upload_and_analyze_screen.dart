@@ -1,4 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:mo/API/api.dart';
+import 'package:mo/features/mock_data/login-mock-data.dart';
 import 'upload_analyze_flow/server_selection_modal.dart';
 import 'upload_analyze_flow/visual_state_card.dart';
 import 'upload_analyze_flow/pipeline_card.dart';
@@ -7,7 +11,9 @@ import 'upload_analyze_flow/ranking_list.dart';
 enum AnalyzeStep { empty, imageUploaded, processing, result }
 
 class UploadAndAnalyzeScreen extends StatefulWidget {
-  const UploadAndAnalyzeScreen({super.key});
+  final GameModel game;
+
+  const UploadAndAnalyzeScreen({super.key, required this.game});
 
   static const Color primaryBlue = Color(0xFF1129A4);
   static const Color bgColor = Color(0xFFF8F9FA);
@@ -22,6 +28,139 @@ class _UploadAndAnalyzeScreenState extends State<UploadAndAnalyzeScreen> {
   AnalyzeStep _currentStep = AnalyzeStep.empty;
   String _selectedServer = "------";
   bool _showServerModal = false;
+  XFile? _pickedImage;
+  List<ServerModel> _matchingServers = [];
+  bool _isLoadingServers = true;
+  AnalysisResultModel? _analysisResult;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadServers();
+  }
+
+  Future<void> _loadServers() async {
+    try {
+      final servers = await ApiService.getServers();
+      if (mounted) {
+        setState(() {
+          _matchingServers = servers.where((server) {
+            if (server.gameName.isEmpty) return true;
+            return server.gameName.toLowerCase() == widget.game.title.toLowerCase();
+          }).toList();
+          if (_matchingServers.isNotEmpty) {
+            _selectedServer = _matchingServers.first.serverName;
+          }
+          _isLoadingServers = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingServers = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to load servers: $e")),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final picker = ImagePicker();
+      final image = await picker.pickImage(source: ImageSource.gallery);
+      if (image != null && mounted) {
+        setState(() {
+          _pickedImage = image;
+          _currentStep = AnalyzeStep.imageUploaded;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to pick image: $e")),
+        );
+      }
+    }
+  }
+
+  Future<void> _analyzeScreenshot() async {
+    if (_pickedImage == null) return;
+
+    setState(() {
+      _currentStep = AnalyzeStep.processing;
+    });
+
+    try {
+      // Step 1: Call OCR extraction
+      final ocrResult = await ApiService.extractText(_pickedImage!.path);
+
+      if (ocrResult.fullText.isEmpty) {
+        throw Exception("OCR returned no text content");
+      }
+
+      List<LeaderboardItem> parsedLeaderboard = [];
+      try {
+        final decoded = jsonDecode(ocrResult.fullText);
+        if (decoded is List) {
+          parsedLeaderboard = decoded.map((item) {
+            if (item is Map<String, dynamic>) {
+              final rank = int.tryParse(item['Hạng']?.toString() ?? '') ?? 0;
+              final name = item['Tên']?.toString() ?? '';
+              final guild = item['Bang Hội']?.toString() ?? '';
+              final scoreStr = item['Lực Chiến']?.toString() ?? '0';
+              final cleanScoreStr = scoreStr.replaceAll(RegExp(r'[^0-9]'), '');
+              final score = int.tryParse(cleanScoreStr) ?? 0;
+
+              return LeaderboardItem(
+                rank: rank,
+                playerName: name,
+                guildName: guild,
+                score: score,
+                value: score,
+              );
+            }
+            return LeaderboardItem(rank: 0, playerName: '', guildName: '', score: 0, value: 0);
+          }).where((item) => item.playerName.isNotEmpty).toList();
+        }
+      } catch (e) {
+        throw Exception("Failed to parse leaderboard from OCR: $e");
+      }
+
+      if (parsedLeaderboard.isEmpty) {
+        throw Exception("No ranking rows could be detected in the image");
+      }
+
+      final result = AnalysisResultModel(
+        analysisId: 0,
+        imageUrl: _pickedImage?.path ?? '',
+        processedTime: DateTime.now().toIso8601String(),
+        gameName: widget.game.title,
+        serverName: _selectedServer,
+        eventName: 'OCR Leaderboard',
+        leaderboard: parsedLeaderboard,
+      );
+
+      await LocalHistoryService.saveResult(result);
+
+      if (mounted) {
+        setState(() {
+          _analysisResult = result;
+          _currentStep = AnalyzeStep.result;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _currentStep = AnalyzeStep.imageUploaded;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Analysis failed: $e")),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,9 +185,15 @@ class _UploadAndAnalyzeScreenState extends State<UploadAndAnalyzeScreen> {
                 // 1. Render Central Box Widget safely
                 VisualStateCard(
                   currentStep: _currentStep,
-                  onUploadTriggered: () => setState(() => _currentStep = AnalyzeStep.imageUploaded),
-                  onClearTriggered: () => setState(() => _currentStep = AnalyzeStep.empty),
-                  onReAnalyzeTriggered: () => setState(() => _currentStep = AnalyzeStep.processing),
+                  pickedImage: _pickedImage,
+                  onUploadTriggered: _pickImage,
+                  onClearTriggered: () => setState(() {
+                    _pickedImage = null;
+                    _currentStep = AnalyzeStep.empty;
+                  }),
+                  onReAnalyzeTriggered: _analyzeScreenshot,
+                  gameTitle: widget.game.title,
+                  selectedServerName: _selectedServer,
                 ),
                 const SizedBox(height: 24),
 
@@ -63,6 +208,7 @@ class _UploadAndAnalyzeScreenState extends State<UploadAndAnalyzeScreen> {
             ServerSelectionModal(
               currentSelected: _selectedServer,
               onClose: () => setState(() => _showServerModal = false),
+              servers: _matchingServers,
               onServerConfirmed: (String server) => setState(() {
                 _selectedServer = server;
                 _showServerModal = false;
@@ -109,12 +255,18 @@ class _UploadAndAnalyzeScreenState extends State<UploadAndAnalyzeScreen> {
         children: [
           Row(
             children: [
-              Expanded(child: _buildSelectorCard(Icons.sports_esports_outlined, "TARGET GAME", "Genshin Impact")),
+              Expanded(child: _buildSelectorCard(Icons.sports_esports_outlined, "TARGET GAME", widget.game.title)),
               const SizedBox(width: 16),
               Expanded(
                 child: GestureDetector(
-                  onTap: () => setState(() => _showServerModal = true),
-                  child: _buildSelectorCard(Icons.description_outlined, "SERVER", _selectedServer),
+                  onTap: _isLoadingServers
+                      ? null
+                      : () => setState(() => _showServerModal = true),
+                  child: _buildSelectorCard(
+                    Icons.description_outlined,
+                    "SERVER",
+                    _isLoadingServers ? "Loading..." : _selectedServer,
+                  ),
                 ),
               ),
             ],
@@ -146,13 +298,7 @@ class _UploadAndAnalyzeScreenState extends State<UploadAndAnalyzeScreen> {
             width: double.infinity,
             height: 52,
             child: ElevatedButton.icon(
-              onPressed: _currentStep == AnalyzeStep.empty
-                  ? null
-                  : () async {
-                setState(() => _currentStep = AnalyzeStep.processing);
-                await Future.delayed(const Duration(seconds: 2));
-                if (mounted) setState(() => _currentStep = AnalyzeStep.result);
-              },
+              onPressed: _currentStep == AnalyzeStep.empty ? null : _analyzeScreenshot,
               icon: const Icon(Icons.bolt, size: 20),
               label: const Text("Analyze Now", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(
@@ -170,7 +316,7 @@ class _UploadAndAnalyzeScreenState extends State<UploadAndAnalyzeScreen> {
     } else if (_currentStep == AnalyzeStep.processing) {
       return PipelineCard(onClearAll: () => setState(() => _currentStep = AnalyzeStep.empty));
     } else {
-      return const RankingList();
+      return RankingList(leaderboard: _analysisResult?.leaderboard ?? []);
     }
   }
 
@@ -189,7 +335,7 @@ class _UploadAndAnalyzeScreenState extends State<UploadAndAnalyzeScreen> {
             ],
           ),
           const SizedBox(height: 6),
-          Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: UploadAndAnalyzeScreen.darkText)),
+          Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: UploadAndAnalyzeScreen.darkText), maxLines: 1, overflow: TextOverflow.ellipsis),
         ],
       ),
     );
