@@ -78,7 +78,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // Helper method to handle navigation and pass Mock Data via MainLayout
   void _navigateToGameSelection(UserModel user, List<GameModel> games) {
-    Navigator.pushReplacement(
+    ApiService.currentUserEmail = user.email; // Set the email for history tracking
+    Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(
         builder: (context) => MainLayout(
@@ -86,6 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
           games: games,
         ),
       ),
+      (route) => false,
     );
   }
 

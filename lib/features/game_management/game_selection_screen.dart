@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:mo/features/mock_data/login-mock-data.dart';
 import 'package:mo/features/cloud_sync/cloud_sync_screen.dart';
-import 'package:mo/features/game_management/upload_and_analyze_screen.dart'; // Imported the new screen
+import 'package:mo/features/game_management/upload_and_analyze_screen.dart';
+import 'package:mo/widgets/main_layout.dart';
+import 'package:mo/widgets/app_tab.dart';
 
 class GameSelectionScreen extends StatefulWidget {
   final UserModel user;
@@ -180,10 +182,7 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
                   alignment: Alignment.topRight,
                   child: GestureDetector(
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const CloudSyncScreen()),
-                      );
+                      MainLayout.of(context)?.setTab(AppTab.cloudSync);
                     },
                     child: Icon(Icons.sync, color: Colors.blue.shade300, size: 22),
                   ),

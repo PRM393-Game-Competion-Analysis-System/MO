@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:mo/API/api.dart';
 import 'package:mo/features/profile/my_profile_screen.dart';
 import 'package:mo/features/profile/activity_center_screen.dart';
+import 'package:mo/widgets/main_layout.dart';
+import 'package:mo/widgets/app_tab.dart';
+import 'package:mo/features/auth/welcome.dart';
 
 class AdminProfileScreen extends StatefulWidget {
   const AdminProfileScreen({super.key});
@@ -39,7 +42,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, color: darkText, size: 20),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => MainLayout.of(context)?.setTab(AppTab.home),
         ),
         title: const Text(
           "My Profile",
@@ -213,8 +216,6 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                     );
                   }),
                   _buildMenuTile(Icons.vpn_key_outlined, "Password & Security"),
-                  _buildMenuTile(Icons.notifications_none_outlined, "Notifications"),
-                  _buildMenuTile(Icons.language_outlined, "Language", trailingText: "English"),
                   _buildMenuTile(Icons.dashboard_customize_outlined, "Activity Center", onTap: () {
                     Navigator.push(
                       context,
@@ -240,9 +241,19 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
               child: Column(
                 children: [
                   _buildMenuTile(Icons.info_outline, "About Us"),
-                  _buildMenuTile(Icons.dark_mode_outlined, "Theme", showSwitch: true),
-                  _buildMenuTile(Icons.calendar_today_outlined, "Appointment"),
-                  _buildMenuTile(Icons.logout_outlined, "Log Out", isDestructive: true),
+                  _buildMenuTile(
+                    Icons.logout_outlined,
+                    "Log Out",
+                    isDestructive: true,
+                    onTap: () {
+                      ApiService.logout(); // Clear session and user email
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (context) => const GameAnalyzeWelcomeScreen()),
+                        (route) => false,
+                      );
+                    },
+                  ),
                 ],
               ),
             ),

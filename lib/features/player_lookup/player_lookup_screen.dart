@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mo/API/api.dart';
+import 'package:mo/widgets/main_layout.dart';
+import 'package:mo/widgets/app_tab.dart';
 
 class PlayerLookupScreen extends StatefulWidget {
   const PlayerLookupScreen({super.key});
@@ -147,7 +149,7 @@ class _PlayerLookupScreenState extends State<PlayerLookupScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, color: darkText, size: 20),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => MainLayout.of(context)?.setTab(AppTab.home),
         ),
         title: const Text(
           "Player Lookup",

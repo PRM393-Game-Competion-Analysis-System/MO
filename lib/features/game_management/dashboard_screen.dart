@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mo/API/api.dart';
+import 'package:mo/widgets/main_layout.dart';
+import 'package:mo/widgets/app_tab.dart';
 
 class ExtractedPlayer {
   final int rank;
@@ -230,7 +232,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, color: DashboardScreen.darkText, size: 20),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => MainLayout.of(context)?.setTab(AppTab.home),
         ),
         title: const Text(
           "Dashboard",

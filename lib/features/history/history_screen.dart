@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mo/API/api.dart';
+import 'package:mo/widgets/main_layout.dart';
+import 'package:mo/widgets/app_tab.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -189,7 +191,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, color: HistoryScreen.darkText, size: 20),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => MainLayout.of(context)?.setTab(AppTab.home),
         ),
         title: const Text(
           "Analyze History",
@@ -234,19 +236,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Filter Chips
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    "All Games",
-                    "Genshin Impact",
-                    "Honor of Kings",
-                    "VALORANT"
-                  ].map((label) => _buildFilterChip(label, _selectedGameFilter == label)).toList(),
-                ),
-              ),
-              const SizedBox(height: 16),
+
 
               // Search Bar
               Container(

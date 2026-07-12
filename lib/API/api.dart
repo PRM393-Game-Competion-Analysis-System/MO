@@ -7,6 +7,12 @@ import 'package:mo/features/mock_data/login-mock-data.dart';
 class ApiService {
   static const String baseUrl = 'https://be-xcsg.onrender.com';
   static String? token;
+  static String? currentUserEmail;
+
+  static void logout() {
+    token = null;
+    currentUserEmail = null;
+  }
 
   static Map<String, String> get headers {
     final map = {'Content-Type': 'application/json'};
@@ -32,6 +38,7 @@ class ApiService {
       token = data['token'] ?? data['Token'];
       final userData = data['user'] ?? data['User'];
       if (userData != null) {
+        currentUserEmail = userData['email'] ?? '';
         final role = userData['role'] ?? 'user';
         final avatarUrl = role == 'admin'
             ? 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200'
@@ -449,6 +456,36 @@ class ApiService {
       throw Exception('Server returned status code: ${response.statusCode}');
     }
   }
+
+  static Future<AnalysisResultModel> analyzeAutomatic({int gameId = 0}) async {
+    final url = Uri.parse('$baseUrl/api/ai/analyze/automatic?gameName=$gameId');
+    final response = await http.post(url, headers: headers);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return AnalysisResultModel.fromJson(data);
+    } else {
+      try {
+        final errorData = jsonDecode(response.body);
+        final message = errorData['message'] ?? 'Failed to run automatic analysis.';
+        throw Exception(message);
+      } catch (_) {
+        throw Exception('Server returned status code: ${response.statusCode}');
+      }
+    }
+  }
+
+  static Future<List<double>> getHeatmapData() async {
+    final url = Uri.parse('$baseUrl/api/ai/heatmap');
+    final response = await http.get(url, headers: headers);
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((item) => (item as num).toDouble()).toList();
+    } else {
+      throw Exception('Server returned status code: ${response.statusCode}');
+    }
+  }
 }
 
 class PlayerModel {
@@ -682,11 +719,23 @@ class LeaderboardModel {
 }
 
 class LocalHistoryService {
-  static const String _fileName = 'analysis_history.json';
+  static const String _baseFileName = 'analysis_history';
 
   static Future<File> _getFile() async {
     final dir = await getApplicationDocumentsDirectory();
-    return File('${dir.path}/$_fileName');
+    final userSuffix = ApiService.currentUserEmail != null 
+        ? '_${ApiService.currentUserEmail!.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}' 
+        : '';
+    return File('${dir.path}/${_baseFileName}${userSuffix}.json');
+  }
+
+  static Future<void> clearAllHistory() async {
+    try {
+      final file = await _getFile();
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } catch (_) {}
   }
 
   static Future<List<AnalysisResultModel>> getHistory() async {
