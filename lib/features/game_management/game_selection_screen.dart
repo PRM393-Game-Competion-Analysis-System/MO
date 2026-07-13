@@ -64,7 +64,7 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
                       children: [
                         _buildHeaderBanner(context, widget.user),
                         const SizedBox(height: 20),
-                        _buildFilterRow(),
+                        // _buildFilterRow(),
                         const SizedBox(height: 20),
                         widget.games.isNotEmpty
                             ? SizedBox(
@@ -235,53 +235,53 @@ class _GameSelectionScreenState extends State<GameSelectionScreen> {
     );
   }
 
-  Widget _buildFilterRow() {
-    final List<String> categories = ["All", "RPG", "FPS", "MOBA"];
-    return Padding(
-      padding: const EdgeInsets.only(top: 16.0),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.filter_alt_outlined, color: primaryBlue, size: 20),
-            ),
-            const SizedBox(width: 8),
-            ...categories.map((category) {
-              final bool isAll = category == "All";
-              return Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isAll ? primaryBlue : Colors.transparent,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isAll ? Colors.transparent : Colors.grey.shade200,
-                    ),
-                  ),
-                  child: Text(
-                    category,
-                    style: TextStyle(
-                      color: isAll ? Colors.white : darkText,
-                      fontWeight: isAll ? FontWeight.bold : FontWeight.w500,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              );
-            }),
-          ],
-        ),
-      ),
-    );
-  }
+  // Widget _buildFilterRow() {
+  //   final List<String> categories = ["All", "RPG", "FPS", "MOBA"];
+  //   return Padding(
+  //     padding: const EdgeInsets.only(top: 16.0),
+  //     child: SingleChildScrollView(
+  //       scrollDirection: Axis.horizontal,
+  //       padding: const EdgeInsets.symmetric(horizontal: 16.0),
+  //       child: Row(
+  //         children: [
+  //           Container(
+  //             padding: const EdgeInsets.all(10),
+  //             decoration: BoxDecoration(
+  //               color: const Color(0xFFEFF6FF),
+  //               borderRadius: BorderRadius.circular(12),
+  //             ),
+  //             child: const Icon(Icons.filter_alt_outlined, color: primaryBlue, size: 20),
+  //           ),
+  //           const SizedBox(width: 8),
+  //           ...categories.map((category) {
+  //             final bool isAll = category == "All";
+  //             return Padding(
+  //               padding: const EdgeInsets.only(right: 8.0),
+  //               child: Container(
+  //                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+  //                 decoration: BoxDecoration(
+  //                   color: isAll ? primaryBlue : Colors.transparent,
+  //                   borderRadius: BorderRadius.circular(20),
+  //                   border: Border.all(
+  //                     color: isAll ? Colors.transparent : Colors.grey.shade200,
+  //                   ),
+  //                 ),
+  //                 child: Text(
+  //                   category,
+  //                   style: TextStyle(
+  //                     color: isAll ? Colors.white : darkText,
+  //                     fontWeight: isAll ? FontWeight.bold : FontWeight.w500,
+  //                     fontSize: 13,
+  //                   ),
+  //                 ),
+  //               ),
+  //             );
+  //           }),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Widget _buildGameCard(GameModel game, bool isSelected) {
     return Container(
