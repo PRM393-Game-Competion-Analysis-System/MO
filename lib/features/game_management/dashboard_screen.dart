@@ -37,6 +37,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isLoading = true;
   String _errorMessage = "";
   String _searchQuery = "";
+  int _currentPage = 0;
+  static const int _pageSize = 10;
+  String _tournamentSort = "none";
 
   @override
   void initState() {
@@ -65,159 +68,310 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  List<ExtractedPlayer> _extractPlayersFromLeaderboard(String text) {
-    final List<ExtractedPlayer> extracted = [];
-    if (!text.contains('"Tên"') && !text.contains('"Lực Chiến"')) {
-      return extracted;
+  List<LeaderboardModel> _getFilteredLeaderboards() {
+    List<LeaderboardModel> list = List.from(_leaderboards);
+    if (_searchQuery.isNotEmpty) {
+      final query = _searchQuery.toLowerCase();
+      list = list.where((l) {
+        final matchesTitle = l.title.toLowerCase().contains(query);
+        final matchesEvent = l.eventName.toLowerCase().contains(query);
+        return matchesTitle || matchesEvent;
+      }).toList();
     }
+    if (_tournamentSort == "asc") {
+      list.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+    } else if (_tournamentSort == "desc") {
+      list.sort((a, b) => b.title.toLowerCase().compareTo(a.title.toLowerCase()));
+    }
+    return list;
+  }
 
-    final regExp = RegExp(
-      r'\{\s*"Hạng"\s*:\s*(\d+|"[^"]*")\s*,\s*"Tên"\s*:\s*"([^"]*)"\s*,\s*"Bang Hội"\s*:\s*"([^"]*)"\s*,\s*"Lực Chiến"\s*:\s*"([^"]*)"\s*\}',
-      caseSensitive: false,
+  Future<void> _confirmAndDeleteLeaderboard(LeaderboardModel item) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Xác nhận xóa"),
+        content: Text("Bạn có chắc chắn muốn xóa bảng xếp hạng \"${item.title.startsWith('Bảng xếp hạng [') ? 'Bảng Xếp Hạng Chiến Lực' : item.title}\" không?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text("Hủy", style: TextStyle(color: DashboardScreen.secondaryText)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text("Xóa", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
     );
 
-    final matches = regExp.allMatches(text);
-    for (final match in matches) {
+    if (confirm == true) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(color: DashboardScreen.primaryBlue),
+        ),
+      );
+
       try {
-        final rawRank = match.group(1)?.replaceAll('"', '') ?? '0';
-        final rank = int.tryParse(rawRank) ?? 0;
-        final name = match.group(2) ?? 'Unknown';
-        final guild = match.group(3) ?? '';
-        final rawPower = match.group(4) ?? '0';
-        final power = int.tryParse(rawPower) ?? 0;
-
-        extracted.add(ExtractedPlayer(
-          rank: rank,
-          name: name,
-          guild: guild.isEmpty ? 'Không Bang' : guild,
-          power: power,
-        ));
-      } catch (_) {}
+        await ApiService.deleteLeaderboard(item.leaderboardId);
+        if (mounted) {
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Đã xóa bảng xếp hạng thành công.")),
+          );
+          _fetchDashboardData();
+        }
+      } catch (e) {
+        if (mounted) {
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Lỗi khi xóa bảng xếp hạng: $e")),
+          );
+        }
+      }
     }
-    return extracted;
   }
 
-  List<LeaderboardModel> _getFilteredLeaderboards() {
-    if (_searchQuery.isEmpty) return _leaderboards;
-    final query = _searchQuery.toLowerCase();
-    return _leaderboards.where((l) {
-      final matchesTitle = l.title.toLowerCase().contains(query);
-      final matchesEvent = l.eventName.toLowerCase().contains(query);
-      return matchesTitle || matchesEvent;
-    }).toList();
+  Future<void> _fetchAndShowLeaderboardDetails(LeaderboardModel item) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: DashboardScreen.primaryBlue),
+      ),
+    );
+
+    try {
+      final entries = await ApiService.getLeaderboardEntries(item.leaderboardId);
+      if (mounted) {
+        Navigator.of(context).pop();
+        _showLeaderboardDetailsModal(item, entries);
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Lỗi tải chi tiết bảng xếp hạng: $e")),
+        );
+      }
+    }
   }
 
-  void _showLeaderboardDetailsModal(LeaderboardModel item, List<ExtractedPlayer> players) {
+  void _showLeaderboardDetailsModal(LeaderboardModel item, List<LeaderboardItem> entries) {
+    final TextEditingController searchController = TextEditingController();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.75,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 48,
-                height: 4,
-                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+      builder: (context) {
+        String modalSearch = "";
+        String modalSort = "rank";
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            List<LeaderboardItem> filtered = List.from(entries);
+            if (modalSearch.isNotEmpty) {
+              final query = modalSearch.toLowerCase();
+              filtered = filtered.where((p) {
+                return p.playerName.toLowerCase().contains(query) ||
+                    p.guildName.toLowerCase().contains(query);
+              }).toList();
+            }
+
+            if (modalSort == "asc") {
+              filtered.sort((a, b) => a.playerName.toLowerCase().compareTo(b.playerName.toLowerCase()));
+            } else if (modalSort == "desc") {
+              filtered.sort((a, b) => b.playerName.toLowerCase().compareTo(a.playerName.toLowerCase()));
+            } else if (modalSort == "rank") {
+              filtered.sort((a, b) => a.rank.compareTo(b.rank));
+            }
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.75,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
               ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                const Icon(Icons.emoji_events_outlined, color: Colors.orange, size: 28),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    item.title.startsWith('Bảng xếp hạng [') ? "Bảng Xếp Hạng Chiến Lực" : item.title,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: DashboardScreen.darkText),
-                    maxLines: 2,
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 48,
+                      height: 4,
+                      decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      const Icon(Icons.emoji_events_outlined, color: Colors.orange, size: 28),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          item.title.startsWith('Bảng xếp hạng [') ? "Bảng Xếp Hạng Chiến Lực" : item.title,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: DashboardScreen.darkText),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    "Sự kiện: ${item.eventName.startsWith('[') ? 'Giải Đấu Mở Rộng' : item.eventName}",
+                    style: const TextStyle(color: DashboardScreen.secondaryText, fontSize: 13),
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              "Sự kiện: ${item.eventName.startsWith('[') ? 'Giải Đấu Mở Rộng' : item.eventName}",
-              style: const TextStyle(color: DashboardScreen.secondaryText, fontSize: 13),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 16),
-            const Divider(),
-            const SizedBox(height: 12),
-            Expanded(
-              child: ListView.builder(
-                itemCount: players.length,
-                itemBuilder: (context, index) {
-                  final p = players[index];
-                  Widget rankWidget;
-                  if (p.rank == 1) {
-                    rankWidget = const Icon(Icons.emoji_events, color: Colors.orange, size: 22);
-                  } else if (p.rank == 2) {
-                    rankWidget = const Icon(Icons.emoji_events, color: Colors.grey, size: 22);
-                  } else if (p.rank == 3) {
-                    rankWidget = const Icon(Icons.emoji_events, color: Colors.brown, size: 22);
-                  } else {
-                    rankWidget = CircleAvatar(
-                      radius: 11,
-                      backgroundColor: Colors.grey.shade100,
-                      child: Text(
-                        p.rank.toString(),
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: DashboardScreen.secondaryText),
-                      ),
-                    );
-                  }
-
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.shade100),
-                    ),
-                    child: Row(
-                      children: [
-                        SizedBox(width: 28, child: Center(child: rankWidget)),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F3F5),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
                             children: [
-                              Text(p.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: DashboardScreen.darkText)),
-                              const SizedBox(height: 2),
-                              Text("Guild: ${p.guild}", style: const TextStyle(color: DashboardScreen.secondaryText, fontSize: 12)),
+                              const Icon(Icons.search, color: DashboardScreen.secondaryText, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: TextField(
+                                  controller: searchController,
+                                  onChanged: (val) {
+                                    setModalState(() {
+                                      modalSearch = val;
+                                    });
+                                  },
+                                  decoration: const InputDecoration(
+                                    hintText: "Tìm kiếm cao thủ hoặc bang hội...",
+                                    hintStyle: TextStyle(color: DashboardScreen.secondaryText, fontSize: 13),
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.symmetric(vertical: 10),
+                                  ),
+                                ),
+                              ),
+                              if (modalSearch.isNotEmpty)
+                                GestureDetector(
+                                  onTap: () {
+                                    searchController.clear();
+                                    setModalState(() {
+                                      modalSearch = "";
+                                    });
+                                  },
+                                  child: const Icon(Icons.close, color: DashboardScreen.secondaryText, size: 16),
+                                ),
                             ],
                           ),
                         ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              p.power.toString(),
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: DashboardScreen.primaryBlue),
-                            ),
-                            const Text("Chiến Lực", style: TextStyle(color: DashboardScreen.secondaryText, fontSize: 10)),
-                          ],
-                        )
-                      ],
-                    ),
-                  );
-                },
+                      ),
+                      const SizedBox(width: 8),
+                      PopupMenuButton<String>(
+                        icon: Icon(
+                          Icons.sort_by_alpha,
+                          color: modalSort == "rank"
+                              ? DashboardScreen.secondaryText
+                              : DashboardScreen.primaryBlue,
+                        ),
+                        tooltip: "Sắp xếp",
+                        onSelected: (value) {
+                          setModalState(() {
+                            modalSort = value;
+                          });
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(value: "rank", child: Text("Sắp xếp: Thứ hạng")),
+                          const PopupMenuItem(value: "asc", child: Text("Tên: A-Z")),
+                          const PopupMenuItem(value: "desc", child: Text("Tên: Z-A")),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Divider(),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: filtered.isEmpty
+                        ? const Center(
+                            child: Text("Không tìm thấy kết quả phù hợp.",
+                                style: TextStyle(color: DashboardScreen.secondaryText)))
+                        : ListView.builder(
+                            itemCount: filtered.length,
+                            itemBuilder: (context, index) {
+                              final p = filtered[index];
+                              Widget rankWidget;
+                              if (p.rank == 1) {
+                                rankWidget = const Icon(Icons.emoji_events, color: Colors.orange, size: 22);
+                              } else if (p.rank == 2) {
+                                rankWidget = const Icon(Icons.emoji_events, color: Colors.grey, size: 22);
+                              } else if (p.rank == 3) {
+                                rankWidget = const Icon(Icons.emoji_events, color: Colors.brown, size: 22);
+                              } else {
+                                rankWidget = CircleAvatar(
+                                  radius: 11,
+                                  backgroundColor: Colors.grey.shade100,
+                                  child: Text(
+                                    p.rank.toString(),
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: DashboardScreen.secondaryText),
+                                  ),
+                                );
+                              }
+
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade50,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: Colors.grey.shade100),
+                                ),
+                                child: Row(
+                                  children: [
+                                    SizedBox(width: 28, child: Center(child: rankWidget)),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(p.playerName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: DashboardScreen.darkText)),
+                                          const SizedBox(height: 2),
+                                          Text("Guild: ${p.guildName.isEmpty ? 'Không Bang' : p.guildName}", style: const TextStyle(color: DashboardScreen.secondaryText, fontSize: 12)),
+                                        ],
+                                      ),
+                                    ),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          p.score.toString(),
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: DashboardScreen.primaryBlue),
+                                        ),
+                                        Text(
+                                          item.metricType.isNotEmpty ? item.metricType : "Chiến Lực",
+                                          style: const TextStyle(color: DashboardScreen.secondaryText, fontSize: 10),
+                                        ),
+                                      ],
+                                    )
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
-      ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -261,6 +415,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   onChanged: (val) {
                     setState(() {
                       _searchQuery = val;
+                      _currentPage = 0;
                     });
                   },
                   decoration: const InputDecoration(
@@ -447,13 +602,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.history_toggle_off, size: 20, color: DashboardScreen.darkText),
-                      SizedBox(width: 8),
-                      Text(
+                      const Icon(Icons.history_toggle_off, size: 20, color: DashboardScreen.darkText),
+                      const SizedBox(width: 8),
+                      const Text(
                         "Tournament Standings",
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: DashboardScreen.darkText),
+                      ),
+                      const SizedBox(width: 4),
+                      PopupMenuButton<String>(
+                        icon: Icon(
+                          Icons.sort_by_alpha,
+                          size: 18,
+                          color: _tournamentSort == "none"
+                              ? DashboardScreen.secondaryText
+                              : DashboardScreen.primaryBlue,
+                        ),
+                        tooltip: "Sắp xếp",
+                        onSelected: (value) {
+                          setState(() {
+                            _tournamentSort = value;
+                            _currentPage = 0;
+                          });
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(value: "none", child: Text("Mặc định")),
+                          const PopupMenuItem(value: "asc", child: Text("Tên: A-Z")),
+                          const PopupMenuItem(value: "desc", child: Text("Tên: Z-A")),
+                        ],
                       ),
                     ],
                   ),
@@ -486,107 +663,188 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: Center(child: Text("No standings found.", style: TextStyle(color: DashboardScreen.secondaryText))),
                 )
               else
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: filteredLeaderboards.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final item = filteredLeaderboards[index];
-                    final extractedPlayers = _extractPlayersFromLeaderboard(item.title);
-                    final isExtracted = extractedPlayers.isNotEmpty;
-
-                    // Beautify display title
-                    String titleDisplay = item.title;
-                    if (titleDisplay.startsWith('Bảng xếp hạng [')) {
-                      titleDisplay = "Bảng Xếp Hạng Chiến Lực ${extractedPlayers.isNotEmpty ? '(Phân Tích OCR)' : ''}";
+                Builder(
+                  builder: (context) {
+                    final totalPages = (filteredLeaderboards.length / _pageSize).ceil();
+                    int activePage = _currentPage;
+                    if (activePage >= totalPages && totalPages > 0) {
+                      activePage = totalPages - 1;
                     }
+                    if (activePage < 0) activePage = 0;
 
-                    return GestureDetector(
-                      onTap: () {
-                        if (isExtracted) {
-                          _showLeaderboardDetailsModal(item, extractedPlayers);
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("Bảng xếp hạng này chưa được phân tích hoặc không chứa dữ liệu.")),
-                          );
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.02),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 50,
-                              height: 50,
-                              decoration: BoxDecoration(
-                                color: isExtracted ? const Color(0xFFEFF6FF) : const Color(0xFFF1F3F5),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                isExtracted ? Icons.analytics_outlined : Icons.leaderboard_outlined,
-                                color: isExtracted ? DashboardScreen.primaryBlue : DashboardScreen.secondaryText,
-                                size: 24,
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    titleDisplay,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: DashboardScreen.darkText),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: isExtracted ? const Color(0xFFD1FAE5) : const Color(0xFFF1F3F5),
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: Text(
-                                          isExtracted ? "OCR COMPLETE" : "RAW STANDINGS",
-                                          style: TextStyle(
-                                            color: isExtracted ? Colors.green.shade800 : DashboardScreen.secondaryText,
-                                            fontSize: 9,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                    final startIndex = activePage * _pageSize;
+                    final endIndex = (startIndex + _pageSize) < filteredLeaderboards.length
+                        ? (startIndex + _pageSize)
+                        : filteredLeaderboards.length;
+                    final pageItems = filteredLeaderboards.sublist(startIndex, endIndex);
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (totalPages > 1) ...[
+                          Container(
+                            height: 36,
+                            margin: const EdgeInsets.only(bottom: 16),
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: totalPages,
+                              separatorBuilder: (context, index) => const SizedBox(width: 8),
+                              itemBuilder: (context, index) {
+                                final isSelected = index == activePage;
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _currentPage = index;
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: isSelected ? DashboardScreen.primaryBlue : Colors.white,
+                                      borderRadius: BorderRadius.circular(18),
+                                      border: Border.all(
+                                        color: isSelected ? DashboardScreen.primaryBlue : Colors.grey.shade200,
+                                        width: 1,
+                                      ),
+                                      boxShadow: isSelected
+                                          ? [
+                                              BoxShadow(
+                                                color: DashboardScreen.primaryBlue.withValues(alpha: 0.15),
+                                                blurRadius: 6,
+                                                offset: const Offset(0, 3),
+                                              )
+                                            ]
+                                          : null,
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        "Trang ${index + 1}",
+                                        style: TextStyle(
+                                          color: isSelected ? Colors.white : DashboardScreen.darkText,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          isExtracted ? "${extractedPlayers.length} cao thủ" : "Không có dữ liệu",
-                                          style: const TextStyle(color: DashboardScreen.secondaryText, fontSize: 11),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                        GestureDetector(
+                          onHorizontalDragEnd: (details) {
+                            if (details.primaryVelocity != null) {
+                              if (details.primaryVelocity! < -300) {
+                                // Swiped left -> Next page
+                                if (activePage < totalPages - 1) {
+                                  setState(() {
+                                    _currentPage = activePage + 1;
+                                  });
+                                }
+                              } else if (details.primaryVelocity! > 300) {
+                                // Swiped right -> Previous page
+                                if (activePage > 0) {
+                                  setState(() {
+                                    _currentPage = activePage - 1;
+                                  });
+                                }
+                              }
+                            }
+                          },
+                          child: ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: pageItems.length,
+                            separatorBuilder: (context, index) => const SizedBox(height: 12),
+                            itemBuilder: (context, index) {
+                              final item = pageItems[index];
+
+                              // Beautify display title
+                              String titleDisplay = item.title;
+                              if (titleDisplay.startsWith('Bảng xếp hạng [')) {
+                                titleDisplay = "Bảng Xếp Hạng Chiến Lực";
+                              }
+
+                              return GestureDetector(
+                                onTap: () => _fetchAndShowLeaderboardDetails(item),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.02),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
                                       ),
                                     ],
                                   ),
-                                ],
-                              ),
-                            ),
-                            Icon(Icons.chevron_right, color: Colors.grey.shade400, size: 20),
-                          ],
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 44,
+                                        height: 44,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFEFF6FF),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: const Icon(
+                                          Icons.leaderboard_outlined,
+                                          color: DashboardScreen.primaryBlue,
+                                          size: 22,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 14),
+                                      Expanded(
+                                        child: Text(
+                                          titleDisplay,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                            color: DashboardScreen.darkText,
+                                          ),
+                                        ),
+                                      ),
+                                      if (ApiService.currentUserRole == 'admin') ...[
+                                        IconButton(
+                                          icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 22),
+                                          onPressed: () => _confirmAndDeleteLeaderboard(item),
+                                        ),
+                                        const SizedBox(width: 4),
+                                      ],
+                                      Icon(Icons.chevron_right, color: Colors.grey.shade400, size: 20),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
                         ),
-                      ),
+                        if (totalPages > 1) ...[
+                          const SizedBox(height: 12),
+                          Center(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.swap_horizontal_circle_outlined, size: 14, color: Colors.grey.shade400),
+                                const SizedBox(width: 4),
+                                Text(
+                                  "Vuốt ngang danh sách hoặc chọn trang để xem tiếp",
+                                  style: TextStyle(
+                                    color: Colors.grey.shade400,
+                                    fontSize: 11,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
                     );
                   },
                 ),
