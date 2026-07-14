@@ -8,10 +8,12 @@ class ApiService {
   static const String baseUrl = 'https://be-xcsg.onrender.com';
   static String? token;
   static String? currentUserEmail;
+  static String? currentUserRole;
 
   static void logout() {
     token = null;
     currentUserEmail = null;
+    currentUserRole = null;
   }
 
   static Map<String, String> get headers {
@@ -40,6 +42,7 @@ class ApiService {
       if (userData != null) {
         currentUserEmail = userData['email'] ?? '';
         final role = userData['role'] ?? 'user';
+        currentUserRole = role;
         final avatarUrl = role == 'admin'
             ? 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200'
             : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200';
@@ -444,8 +447,8 @@ class ApiService {
     }
   }
 
-  static Future<List<LeaderboardModel>> getLeaderboards() async {
-    final url = Uri.parse('$baseUrl/api/leaderboard');
+  static Future<List<LeaderboardModel>> getLeaderboards({int pageSize = 999999}) async {
+    final url = Uri.parse('$baseUrl/api/leaderboard?PageSize=$pageSize');
     final response = await http.get(url, headers: headers);
 
     if (response.statusCode == 200) {
@@ -456,6 +459,28 @@ class ApiService {
       throw Exception('Server returned status code: ${response.statusCode}');
     }
   }
+
+  static Future<List<LeaderboardItem>> getLeaderboardEntries(int leaderboardId) async {
+    final url = Uri.parse('$baseUrl/api/leaderboard/$leaderboardId/entries');
+    final response = await http.get(url, headers: headers);
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((item) => LeaderboardItem.fromJson(item)).toList();
+    } else {
+      throw Exception('Server returned status code: ${response.statusCode}');
+    }
+  }
+
+  static Future<void> deleteLeaderboard(int id) async {
+    final url = Uri.parse('$baseUrl/api/leaderboard/$id');
+    final response = await http.delete(url, headers: headers);
+
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception('Server returned status code: ${response.statusCode}');
+    }
+  }
+
 
   static Future<AnalysisResultModel> analyzeAutomatic({int gameId = 0}) async {
     final url = Uri.parse('$baseUrl/api/ai/analyze/automatic?gameName=$gameId');
