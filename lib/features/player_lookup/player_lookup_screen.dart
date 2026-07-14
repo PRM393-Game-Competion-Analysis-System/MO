@@ -406,9 +406,13 @@ class _PlayerLookupScreenState extends State<PlayerLookupScreen> {
                   children: [
                     Row(
                       children: [
-                        Text(
-                          player.playerName,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: darkText),
+                        Expanded(
+                          child: Text(
+                            player.playerName,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: darkText),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         const SizedBox(width: 8),
                         Container(
