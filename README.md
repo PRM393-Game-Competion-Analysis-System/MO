@@ -18,6 +18,8 @@ The project follows a scalable **Feature-First (Feature-Driven)** architecture p
 
 ```text
 lib/
+|── API/
+|   ── api.dart                    # APIs implements
 ├── features/                      # Business domains & feature modules
 │   ├── activity_center/           # Admin-Only Governance Suite
 │   │   ├── activity_heatmap_screen.dart # 35-Day traffic matrix grid
