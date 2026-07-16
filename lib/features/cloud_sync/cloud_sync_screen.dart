@@ -58,6 +58,38 @@ class _CloudSyncScreenState extends State<CloudSyncScreen> {
     }
   }
 
+  void _showFullScreenImage(BuildContext context, String imageUrl) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            iconTheme: const IconThemeData(color: Colors.white),
+            elevation: 0,
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              panEnabled: true,
+              boundaryMargin: const EdgeInsets.all(20),
+              minScale: 0.5,
+              maxScale: 4,
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.contain,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return const Center(child: CircularProgressIndicator(color: Colors.white));
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   // Hàm helper để parse dữ liệu từ chuỗi eventName nếu leaderboard bị trống (giống Dashboard)
   List<LeaderboardItem> _parseLeaderboardFromText(String text) {
     final List<LeaderboardItem> items = [];
@@ -125,7 +157,7 @@ class _CloudSyncScreenState extends State<CloudSyncScreen> {
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: darkText),
                         ),
                         Text(
-                          "Phân tích hoàn tất lúc ${result.processedTime.split('T').last.substring(0, 5)}",
+                          "Analysis completed at ${result.processedTime.split('T').last.substring(0, 5)}",
                           style: const TextStyle(color: secondaryText, fontSize: 13),
                         ),
                       ],
@@ -141,19 +173,22 @@ class _CloudSyncScreenState extends State<CloudSyncScreen> {
             const SizedBox(height: 20),
             // Hiển thị ảnh đã phân tích
             if (result.imageUrl.isNotEmpty)
-              Container(
-                height: 180,
-                width: double.infinity,
-                margin: const EdgeInsets.symmetric(horizontal: 24),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  image: DecorationImage(
-                    image: NetworkImage(result.imageUrl),
-                    fit: BoxFit.cover,
+              GestureDetector(
+                onTap: () => _showFullScreenImage(context, result.imageUrl),
+                child: Container(
+                  height: 180,
+                  width: double.infinity,
+                  margin: const EdgeInsets.symmetric(horizontal: 24),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    image: DecorationImage(
+                      image: NetworkImage(result.imageUrl),
+                      fit: BoxFit.cover,
+                    ),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))
+                    ],
                   ),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))
-                  ],
                 ),
               ),
             const SizedBox(height: 24),
@@ -161,11 +196,11 @@ class _CloudSyncScreenState extends State<CloudSyncScreen> {
               padding: EdgeInsets.symmetric(horizontal: 24),
               child: Row(
                 children: [
-                  Text("KẾT QUẢ PHÂN TÍCH", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: secondaryText, letterSpacing: 1.1)),
+                  Text("ANALYSIS RESULTS", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: secondaryText, letterSpacing: 1.1)),
                   Spacer(),
                   Icon(Icons.sort, size: 16, color: secondaryText),
                   SizedBox(width: 4),
-                  Text("Theo Hạng", style: TextStyle(fontSize: 12, color: secondaryText)),
+                  Text("By Rank", style: TextStyle(fontSize: 12, color: secondaryText)),
                 ],
               ),
             ),
@@ -286,7 +321,7 @@ class _CloudSyncScreenState extends State<CloudSyncScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              "Google Photos Linked",
+                              "Cloudinary Image Linked",
                               style: TextStyle(
                                 color: primaryBlue,
                                 fontWeight: FontWeight.bold,
@@ -414,88 +449,91 @@ class _CloudSyncScreenState extends State<CloudSyncScreen> {
   }
 
   Widget _buildScreenshotCard(String title, String syncTime, String imageUrl, {bool isNew = false}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                child: Image.network(
-                  imageUrl,
-                  height: 120,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    height: 120,
-                    color: Colors.grey.shade200,
-                    child: const Icon(Icons.image, color: Colors.grey),
-                  ),
-                ),
-              ),
-              if (isNew)
-                Positioned(
-                  top: 8,
-                  left: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.access_time, size: 10, color: Colors.white),
-                        SizedBox(width: 4),
-                        Text(
-                          "NEW",
-                          style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return GestureDetector(
+      onTap: () => _showFullScreenImage(context, imageUrl),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.videogame_asset_outlined, size: 14, color: primaryBlue),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                        overflow: TextOverflow.ellipsis,
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  child: Image.network(
+                    imageUrl,
+                    height: 120,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      height: 120,
+                      color: Colors.grey.shade200,
+                      child: const Icon(Icons.image, color: Colors.grey),
+                    ),
+                  ),
+                ),
+                if (isNew)
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.access_time, size: 10, color: Colors.white),
+                          SizedBox(width: 4),
+                          Text(
+                            "NEW",
+                            style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  syncTime,
-                  style: const TextStyle(color: secondaryText, fontSize: 11),
-                ),
+                  ),
               ],
             ),
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.videogame_asset_outlined, size: 14, color: primaryBlue),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    syncTime,
+                    style: const TextStyle(color: secondaryText, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

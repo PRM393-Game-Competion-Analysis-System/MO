@@ -234,26 +234,6 @@ class GameAnalyzeWelcomeScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
-
-                  // --- Đã cập nhật các nút Mạng xã hội chuẩn thiết kế ở đây 👇 ---
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildSocialIconFromNetwork(
-                        'https://cdn-icons-png.flaticon.com/512/2991/2991148.png', // Google Logo màu gốc
-                        size: 22,
-                        isColor: true,
-                      ),
-                      const SizedBox(width: 28),
-                      _buildSocialIconFromNetwork(
-                        'https://cdn-icons-png.flaticon.com/512/25/25231.png', // GitHub Logo chuẩn tối màu
-                        size: 24,
-                      ),
-                      const SizedBox(width: 28),
-                      _buildSocialIconFromIcon(Icons.apple, size: 26), // Apple Logo hệ thống
-                    ],
-                  ),
                 ],
               ),
             ),
@@ -325,32 +305,6 @@ class GameAnalyzeWelcomeScreen extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-
-  // Widget hiển thị logo từ internet (Google, GitHub)
-  Widget _buildSocialIconFromNetwork(String url, {double size = 24, bool isColor = false}) {
-    return IconButton(
-      onPressed: () {},
-      icon: Image.network(
-        url,
-        width: size,
-        height: size,
-        color: isColor ? null : darkText, // Tự động đổi màu logo GitHub sang màu tối giống thiết kế
-        errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, size: 20),
-      ),
-      constraints: const BoxConstraints(),
-      padding: EdgeInsets.zero,
-    );
-  }
-
-  // Widget hiển thị logo hệ thống (Apple)
-  Widget _buildSocialIconFromIcon(IconData icon, {double size = 24}) {
-    return IconButton(
-      onPressed: () {},
-      icon: Icon(icon, color: darkText, size: size),
-      constraints: const BoxConstraints(),
-      padding: EdgeInsets.zero,
     );
   }
 }

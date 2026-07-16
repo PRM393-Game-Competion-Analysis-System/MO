@@ -303,42 +303,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 32),
 
-                  // OAuth Divider
-                  const Row(
-                    children: [
-                      Expanded(child: Divider()),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          "OR CONTINUE WITH",
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: primaryBlue,
-                            letterSpacing: 1.1,
-                          ),
-                        ),
-                      ),
-                      Expanded(child: Divider()),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Social Media Authentication Buttons
-                  _buildSocialButton(
-                    label: "Continue with Google",
-                    iconPath: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
-                    onPressed: () => _navigateToGameSelection(LoginMockData.mockUser, LoginMockData.mockGames),
-                    isColor: true,
-                  ),
-                  const SizedBox(height: 12),
-                  _buildSocialButton(
-                    label: "Continue with GitHub",
-                    iconPath: 'https://cdn-icons-png.flaticon.com/512/25/25231.png',
-                    onPressed: () => _navigateToGameSelection(LoginMockData.mockUser, LoginMockData.mockGames),
-                  ),
-                  const SizedBox(height: 24),
-
                   // Footer Navigation Links
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center, // ĐÃ FIX LỖI TẠI ĐÂY 🎯
@@ -389,47 +353,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSocialButton({
-    required String label,
-    required String iconPath,
-    required VoidCallback onPressed,
-    bool isColor = false,
-  }) {
-    return SizedBox(
-      width: double.infinity,
-      height: 52,
-      child: OutlinedButton(
-        onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          side: BorderSide(color: Colors.grey.shade200),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.network(
-              iconPath,
-              width: 20,
-              height: 20,
-              color: isColor ? null : darkText,
-            ),
-            const SizedBox(width: 12),
-            Text(
-              label,
-              style: const TextStyle(
-                color: darkText,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-            ),
-          ],
         ),
       ),
     );
