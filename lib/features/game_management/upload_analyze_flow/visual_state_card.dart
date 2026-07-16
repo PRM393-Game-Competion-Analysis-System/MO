@@ -11,6 +11,7 @@ class VisualStateCard extends StatelessWidget {
   final VoidCallback onReAnalyzeTriggered;
   final String gameTitle;
   final String selectedServerName;
+  final double? analysisDuration;
 
   const VisualStateCard({
     super.key,
@@ -21,6 +22,7 @@ class VisualStateCard extends StatelessWidget {
     required this.onReAnalyzeTriggered,
     required this.gameTitle,
     required this.selectedServerName,
+    this.analysisDuration,
   });
 
   static const Color primaryBlue = Color(0xFF1129A4);
@@ -154,14 +156,17 @@ class VisualStateCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("ANALYSIS COMPLETE", style: TextStyle(color: primaryBlue, fontWeight: FontWeight.bold, fontSize: 11, letterSpacing: 0.5)),
-                      SizedBox(height: 4),
-                      Text("PixelRank High Precision", style: TextStyle(color: darkText, fontWeight: FontWeight.bold, fontSize: 18)),
-                    ],
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("ANALYSIS COMPLETE", style: TextStyle(color: primaryBlue, fontWeight: FontWeight.bold, fontSize: 11, letterSpacing: 0.5)),
+                        SizedBox(height: 4),
+                        Text("PixelRank High Precision", style: TextStyle(color: darkText, fontWeight: FontWeight.bold, fontSize: 18), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 12),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
@@ -174,9 +179,13 @@ class VisualStateCard extends StatelessWidget {
               const SizedBox(height: 20),
               Row(
                 children: [
-                  _buildResultMetaBox(Icons.memory, "AI MODEL", "V3.2 Pro"),
+                  _buildResultMetaBox(Icons.memory, "AI MODEL", "PaddleOCR"),
                   const SizedBox(width: 8),
-                  _buildResultMetaBox(Icons.access_time, "DURATION", "1.4s"),
+                  _buildResultMetaBox(
+                    Icons.access_time,
+                    "DURATION",
+                    analysisDuration != null ? "${(analysisDuration! / 1000).toStringAsFixed(1)}s" : "1.4s",
+                  ),
                   const SizedBox(width: 8),
                   _buildResultMetaBox(Icons.emoji_events_outlined, "PLAYERS", "Verified"),
                 ],
@@ -219,9 +228,9 @@ class VisualStateCard extends StatelessWidget {
           children: [
             Icon(icon, size: 18, color: primaryBlue),
             const SizedBox(height: 6),
-            Text(label, style: const TextStyle(fontSize: 9, color: secondaryText, fontWeight: FontWeight.bold)),
+            Text(label, style: const TextStyle(fontSize: 9, color: secondaryText, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 2),
-            Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: darkText)),
+            Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: darkText), maxLines: 1, overflow: TextOverflow.ellipsis),
           ],
         ),
       ),

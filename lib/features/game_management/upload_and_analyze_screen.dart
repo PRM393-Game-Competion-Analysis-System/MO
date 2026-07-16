@@ -32,6 +32,7 @@ class _UploadAndAnalyzeScreenState extends State<UploadAndAnalyzeScreen> {
   List<ServerModel> _matchingServers = [];
   bool _isLoadingServers = true;
   AnalysisResultModel? _analysisResult;
+  double? _lastAnalysisDuration;
 
   @override
   void initState() {
@@ -90,11 +91,17 @@ class _UploadAndAnalyzeScreenState extends State<UploadAndAnalyzeScreen> {
 
     setState(() {
       _currentStep = AnalyzeStep.processing;
+      _lastAnalysisDuration = null;
     });
 
     try {
+      final startTime = DateTime.now();
+
       // Step 1: Call OCR extraction
       final ocrResult = await ApiService.extractText(_pickedImage!.path);
+
+      final endTime = DateTime.now();
+      final duration = endTime.difference(startTime).inMilliseconds.toDouble();
 
       if (ocrResult.fullText.isEmpty) {
         throw Exception("OCR returned no text content");
@@ -147,6 +154,7 @@ class _UploadAndAnalyzeScreenState extends State<UploadAndAnalyzeScreen> {
       if (mounted) {
         setState(() {
           _analysisResult = result;
+          _lastAnalysisDuration = duration;
           _currentStep = AnalyzeStep.result;
         });
       }
@@ -194,6 +202,7 @@ class _UploadAndAnalyzeScreenState extends State<UploadAndAnalyzeScreen> {
                   onReAnalyzeTriggered: _analyzeScreenshot,
                   gameTitle: widget.game.title,
                   selectedServerName: _selectedServer,
+                  analysisDuration: _lastAnalysisDuration,
                 ),
                 const SizedBox(height: 24),
 

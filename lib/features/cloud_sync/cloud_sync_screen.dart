@@ -37,7 +37,7 @@ class _CloudSyncScreenState extends State<CloudSyncScreen> {
       
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Phân tích hoàn tất và đã lưu vào lịch sử!'),
+          content: Text('Analysis complete and saved to history!'),
           backgroundColor: Colors.green,
         ),
       );
@@ -356,7 +356,7 @@ class _CloudSyncScreenState extends State<CloudSyncScreen> {
                         Icon(Icons.info_outline, size: 18, color: secondaryText),
                         SizedBox(width: 8),
                         Text(
-                          "Auto-detection found 2 new screenshots.",
+                          "Auto-detection found new screenshots.",
                           style: TextStyle(fontSize: 12, color: darkText),
                         ),
                       ],
