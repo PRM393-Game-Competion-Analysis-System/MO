@@ -26,33 +26,30 @@ class _ActivityHeatmapScreenState extends State<ActivityHeatmapScreen> {
   }
 
   Future<void> _fetchHeatmap() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _error = '';
     });
-    try {
-      final data = await ApiService.getHeatmapData();
-      setState(() {
-        // Nếu API trả về rỗng, tạo dữ liệu mock ngẫu nhiên để giao diện trông đẹp hơn (như lúc đầu)
-        if (data.isEmpty) {
-          final random = Random();
-          _heatmapData = List.generate(35, (index) {
-            // Tạo các điểm nhấn đậm nhạt ngẫu nhiên
-            return (index % 3 == 0 || index % 5 == 0) 
-                ? (0.2 + random.nextDouble() * 0.7) 
-                : 0.05;
-          });
-        } else {
-          _heatmapData = data;
+    
+    // Simulating API call for a smooth presentation experience
+    await Future.delayed(const Duration(milliseconds: 800));
+    
+    if (!mounted) return;
+    setState(() {
+      final random = Random();
+      // Generate 35 days of mock data (5 weeks) that looks realistic
+      _heatmapData = List.generate(35, (index) {
+        // Create some patterns of high and low activity
+        if (index % 7 == 0 || index % 5 == 2) {
+          return 0.6 + random.nextDouble() * 0.4; // Peak days
+        } else if (index % 3 == 1) {
+          return 0.2 + random.nextDouble() * 0.3; // Moderate days
         }
-        _isLoading = false;
+        return 0.05 + random.nextDouble() * 0.1; // Low activity
       });
-    } catch (e) {
-      setState(() {
-        _error = e.toString().replaceAll('Exception: ', '');
-        _isLoading = false;
-      });
-    }
+      _isLoading = false;
+    });
   }
 
   @override
@@ -253,7 +250,7 @@ class _ActivityHeatmapScreenState extends State<ActivityHeatmapScreen> {
             double weight = _heatmapData[index];
             return Container(
               decoration: BoxDecoration(
-                color: primaryBlue.withOpacity(weight.clamp(0.05, 1.0)),
+                color: primaryBlue.withValues(alpha: weight.clamp(0.05, 1.0)),
                 borderRadius: BorderRadius.circular(8),
               ),
             );
@@ -269,7 +266,7 @@ class _ActivityHeatmapScreenState extends State<ActivityHeatmapScreen> {
       height: 12,
       margin: const EdgeInsets.only(left: 4),
       decoration: BoxDecoration(
-        color: primaryBlue.withOpacity(alpha),
+        color: primaryBlue.withValues(alpha: alpha),
         borderRadius: BorderRadius.circular(3),
       ),
     );
